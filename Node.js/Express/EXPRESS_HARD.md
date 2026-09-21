@@ -1,114 +1,62 @@
-# 🟢 Express & Node.js - Hard Questions From Notes
+# 🟢 Node.js & Express - Advanced / Hard Questions
 
-> **Topics from Notes Covered:** Libuv Details Explanation, `process.nextTick` (`process.next`), Buffer and Cluster, Streams & Backpressure, Streams/fs/threads in Node.js vs React Native.
+> **Topics Covered:** Node.js Event Loop Internals (Phases: Timers, Pending Callbacks, Idle/Prepare, Poll, Check, Close), Streams & Buffers (Handling GBs of Data), Node.js Clustering & Worker Threads (`cluster` module, PM2), `process.nextTick()` vs `setImmediate()`, Memory Leaks & Garbage Collection Profiling in Node.
 
 ---
 
-### Q1: Libuv Detailed Explanation (Event Loop Phases & Thread Pool)
-**Question (From Notes):** Give a detailed explanation of Libuv, the 6 Event Loop phases, and the background Thread Pool.
+### Q1: Node.js Event Loop Phases & `process.nextTick()` vs `setImmediate()` ⭐⭐⭐
+**Question:** Explain the 6 phases of the Libuv Event Loop in Node.js. How does `process.nextTick()` differ from `setImmediate()`?
 
 **Answer:**
-Libuv is a C library providing Node.js with its event-driven asynchronous I/O engine.
+The Libuv Event Loop in Node.js processes operations through 6 distinct phases in each iteration (tick):
 
-```
-   ┌───────────────────────────┐
-┌─>│          timers           │  -> setTimeout() & setInterval() callbacks
-│  └─────────────┬─────────────┘
-│  ┌─────────────┴─────────────┐
-│  │     pending callbacks     │  -> Deferred I/O callbacks from previous cycle
-│  └─────────────┬─────────────┘
-│  ┌─────────────┴─────────────┐
-│  │       idle, prepare       │  -> Internal Libuv usage only
-│  └─────────────┬─────────────┘
-│  ┌─────────────┴─────────────┐
-│  │           poll            │  -> Fetch new I/O events (network & disk reads)
-│  └─────────────┬─────────────┘
-│  ┌─────────────┴─────────────┐
-│  │           check           │  -> setImmediate() callbacks
-│  └─────────────┬─────────────┘
-│  ┌─────────────┴─────────────┐
-│  │      close callbacks      │  -> socket.on('close') events
-└──┴───────────────────────────┘
+```mermaid
+graph TD
+    A[1. Timers Phase: setTimeout, setInterval] --> B[2. Pending Callbacks: I/O errors, OS callbacks]
+    B --> C[3. Idle, Prepare: Internal Node.js usage]
+    C --> D[4. Poll Phase: Retrieve new I/O events & execute I/O callbacks]
+    D --> E[5. Check Phase: setImmediate callbacks]
+    E --> F[6. Close Callbacks: socket.on'close']
+    F --> A
 ```
 
-**Libuv Thread Pool (`UV_THREADPOOL_SIZE`):**
-- Asynchronous tasks in JavaScript run on a single main thread.
-- Blocking operations (`fs` file system calls, `crypto` hashing, `zlib` compression, DNS lookups) are delegated by Libuv to a background worker thread pool (defaults to **4 threads**).
-- Can be tuned before process starts: `UV_THREADPOOL_SIZE=8 node app.js`.
-- Network I/O is non-blocking and uses OS kernel event notification mechanisms (`epoll`/`kqueue`/`IOCP`) without touching the thread pool.
+- **`process.nextTick()`**: Executes **immediately after the current operation completes**, before the event loop advances to *any* next phase. Can starve the Event Loop if called recursively.
+- **`setImmediate()`**: Executes in the **Check phase** of the event loop.
 
 ---
 
-### Q2: `process.nextTick` (`process.next`)
-**Question (From Notes):** Explain `process.nextTick()` and how it prioritizes against `setImmediate` and `setTimeout`.
+### Q2: Streams and Buffers: Processing Large Files without Memory Crashes
+**Question:** What are Node.js Streams? Create a stream pipeline to read a 5GB file, compress it with Gzip, and write it to disk without exceeding RAM limits.
 
 **Answer:**
-- **`process.nextTick()`** has the **highest priority** in Node.js. It runs in the microtask queue immediately after the current operation completes, before the event loop advances to any other phase or microtask.
-- **`Promise.then()`**: Runs in the microtask queue right after `process.nextTick`.
-- **`setTimeout(fn, 0)`**: Evaluated in Timers phase.
-- **`setImmediate(fn)`**: Evaluated in Check phase.
-
-```javascript
-console.log("1. Sync Start");
-
-setTimeout(() => console.log("6. setTimeout"), 0);
-setImmediate(() => console.log("7. setImmediate"));
-
-Promise.resolve().then(() => console.log("4. Promise Microtask"));
-process.nextTick(() => console.log("3. process.nextTick (Top Priority)"));
-
-console.log("2. Sync End");
-
-// Output Order:
-// 1. Sync Start -> 2. Sync End -> 3. process.nextTick -> 4. Promise -> 6. setTimeout -> 7. setImmediate
-```
-
----
-
-### Q3: Buffer and Cluster in Node.js
-**Question (From Notes):** Explain Buffer and Cluster in Node.js.
-
-**Answer:**
-- **Buffer**: Allocates raw binary memory **outside the V8 garbage-collected heap** directly via C++ Libuv layer. Used to handle binary streams (files, network packets, images) without triggering V8 GC pauses.
-  ```javascript
-  const buf = Buffer.from("NodeJS", "utf8");
-  console.log(buf); // <Buffer 4e 6f 64 65 4a 53>
-  ```
-- **Cluster**: Allows spawning multiple worker Node.js processes across multi-core CPUs that all share the same server TCP port, achieving horizontal multi-process scaling.
-  ```javascript
-  const cluster = require('cluster');
-  const http = require('http');
-  const os = require('os');
-
-  if (cluster.isPrimary) {
-    const numCPUs = os.cpus().length;
-    for (let i = 0; i < numCPUs; i++) cluster.fork();
-  } else {
-    http.createServer((req, res) => res.end(`Worker PID: ${process.pid}\n`)).listen(3000);
-  }
-  ```
-
----
-
-### Q4: Node.js Streams & Backpressure
-**Question (From Notes):** What are Streams, and what is Backpressure?
-
-**Answer:**
-Streams process data sequentially in small chunks without loading the entire file into RAM.
-- **4 Types**: `Readable`, `Writable`, `Duplex`, `Transform`.
-- **Backpressure**: Occurs when the readable stream reads data faster than the writable stream can write it. `stream.pipeline` automatically handles backpressure and frees resources.
+- **Streams** allow reading and writing data chunk-by-chunk in pieces rather than loading the entire payload into RAM memory at once.
+- 4 Types: `Readable`, `Writable`, `Duplex`, `Transform`.
 
 ```javascript
 const fs = require('fs');
 const zlib = require('zlib');
 const { pipeline } = require('stream/promises');
 
-async function compressStream(src, dest) {
-  await pipeline(
-    fs.createReadStream(src),
-    zlib.createGzip(),
-    fs.createWriteStream(dest)
-  );
-  console.log("Compressed stream safely!");
+async function compressLargeFile() {
+  try {
+    await pipeline(
+      fs.createReadStream('large_database_dump.sql'), // 5GB Readable Stream
+      zlib.createGzip(),                             // Transform Stream
+      fs.createWriteStream('database_dump.sql.gz')    // Writable Stream
+    );
+    console.log('Compression successful with under 50MB RAM usage!');
+  } catch (err) {
+    console.error('Pipeline failed:', err);
+  }
 }
+compressLargeFile();
 ```
+
+---
+
+### Q3: Clustering & Worker Threads (Multi-Core CPU Scaling)
+**Question:** How does Node.js leverage multi-core CPU architectures? Compare the `cluster` module with `worker_threads`.
+
+**Answer:**
+- **`cluster` Module**: Forks multiple separate Node.js processes (master/worker), each with its own V8 instance, Event Loop, and memory space, sharing the same server port (managed via round-robin IPC).
+- **`worker_threads`**: Runs multiple JavaScript execution threads sharing memory (`SharedArrayBuffer`) within a single Node.js process. Ideal for CPU-heavy mathematical computations (image processing, cryptography).

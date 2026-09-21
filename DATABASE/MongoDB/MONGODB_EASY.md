@@ -1,34 +1,42 @@
-# 🍃 Database & MongoDB - Easy Questions From Notes
+# 🍃 MongoDB - Easy Questions
 
-> **Topics from Notes Covered:** NoSQL vs SQL, SQL Reasons, Database Indexing Basics.
-
----
-
-### Q1: NoSQL vs SQL & SQL Reasons
-**Question (From Notes):** What is the difference between NoSQL and SQL? What are the reasons to choose SQL over NoSQL?
-
-**Answer:**
-| Feature | SQL (Relational: PostgreSQL, MySQL) | NoSQL (Document: MongoDB) |
-| :--- | :--- | :--- |
-| **Schema** | Fixed, rigid tabular schema | Dynamic, flexible BSON/JSON schema |
-| **Relationships** | Complex foreign key `JOIN`s | Embedded subdocuments or `$lookup`/`populate` |
-| **Scaling** | Vertical scaling (bigger CPU/RAM) | Horizontal scaling (Sharding) |
-| **Transactions** | Full ACID compliance out of the box | Document-level atomicity, multi-doc ACID via sessions |
-
-**Reasons to choose SQL:**
-1. **Strict Data Integrity**: When schemas must adhere strictly to constraints (banking, financial ledgers).
-2. **Complex Relational Joins**: When data requires deep, multi-table joins.
-3. **Standardized Query Language**: Universal standard for analytics and reporting.
+> **Topics Covered:** What is MongoDB, SQL vs NoSQL Differences, BSON vs JSON, Collections and Documents, Basic CRUD Operations (`insertOne`, `find`, `updateOne`, `deleteOne`), Common Query Operators (`$gt`, `$in`, `$set`).
 
 ---
 
-### Q2: What is Database Indexing?
-**Question (From Notes):** What is an Index in a database?
+### Q1: What is MongoDB and SQL vs NoSQL?
+**Question:** What is MongoDB? Compare SQL (Relational) and NoSQL (Document) databases.
 
 **Answer:**
-Without an index, the database must perform a **Full Collection/Table Scan** ($O(N)$), reading every document on disk. An index creates a sorted **B-Tree** data structure holding field values and disk pointers, reducing lookup time to $O(\log N)$.
+- **MongoDB** is a source-available, cross-platform, document-oriented NoSQL database that stores data in flexible, JSON-like **BSON (Binary JSON)** documents.
+- **SQL vs NoSQL Comparison:**
+  | Feature | SQL (MySQL, PostgreSQL) | NoSQL (MongoDB) |
+  | :--- | :--- | :--- |
+  | **Data Model** | Relational tables with fixed columns and rows | Collections of flexible BSON documents |
+  | **Schema** | Rigid, predefined schema | Dynamic, flexible schema per document |
+  | **Relationships** | Foreign Keys and `JOIN` operations | Embedded Subdocuments or Document References (`$lookup`) |
+  | **Scaling** | Vertical scaling (Scale-up CPU/RAM) | Horizontal scaling (Scale-out Sharding) |
+  | **Transactions** | ACID compliant by default | ACID transactions supported across collections |
 
+---
+
+### Q2: Basic CRUD Operations in MongoDB
+**Question:** Write MongoDB shell commands for Create, Read, Update, and Delete operations.
+
+**Answer:**
 ```javascript
-// Create single-field index on email in MongoDB
-db.users.createIndex({ email: 1 });
+// 1. Create (Insert)
+db.users.insertOne({ name: "Utkarsh Singh", email: "utkarsh@example.com", age: 24, skills: ["Node.js", "React"] });
+
+// 2. Read (Query with operators)
+db.users.find({ age: { $gte: 18 }, skills: { $in: ["React"] } }).sort({ age: -1 }).limit(10);
+
+// 3. Update (Using $set and $push)
+db.users.updateOne(
+  { email: "utkarsh@example.com" },
+  { $set: { status: "active" }, $push: { skills: "MongoDB" } }
+);
+
+// 4. Delete
+db.users.deleteOne({ email: "utkarsh@example.com" });
 ```

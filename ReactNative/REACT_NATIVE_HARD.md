@@ -1,23 +1,31 @@
-# 📱 React Native - Hard Questions From Notes
+# 📱 React Native - Advanced / Hard Questions
 
-> **Topics from Notes Covered:** Streams, File System (`fs`), and Threading in React Native vs Node.js.
+> **Topics Covered:** React Native Architecture: Old Bridge vs New Architecture (Fabric Renderer, TurboModules, JSI, Codegen), Native Modules & Native UI Components, Hermes JS Engine, Memory & Frame Drop Optimization.
 
 ---
 
-### Q1: Streams, `fs`, and Threads in React Native vs Node.js
-**Question (From Notes):** Compare Streams, File System (`fs`), and Threads between React Native and Node.js.
+### Q1: React Native New Architecture (Fabric, TurboModules, JSI, Codegen) ⭐⭐⭐
+**Question:** Explain the architectural difference between the Old Bridge Architecture and the New Architecture in React Native.
 
 **Answer:**
-| Domain | Node.js | React Native |
-| :--- | :--- | :--- |
-| **File System (`fs`)** | Built-in `fs` and `fs/promises` core modules reading directly from OS disk. | No native core `fs`. Requires native community modules (`react-native-fs`, `expo-file-system`) crossing the native bridge/JSI. |
-| **Streams** | Native `stream` module (`Readable`, `Writable`, `Transform`, `pipeline`) with backpressure control. | Streams must be bridged to native platform streams (iOS `NSInputStream`, Android `InputStream`) to prevent blocking the JS thread. |
-| **Threading Model** | Main JS Thread + Libuv Thread Pool (4 threads for I/O) + `worker_threads`. | **3 Core Threads**:<br>1. **JS Thread**: Runs React component code.<br>2. **UI Main Thread**: Manages native views and gestures.<br>3. **Shadow Thread**: Computes Flexbox layout with Yoga engine. |
 
+#### Old Architecture (Bridge Bottleneck):
 ```
-   Node.js Architecture:
-   [JS Engine] <---> [Libuv Event Loop] <---> [Thread Pool / OS Kernel]
+JS Thread (V8/JSC)  <=== Asynchronous JSON Bridge ===>  Native Thread (UI / Shadow Tree)
+```
+- **Limitations:**
+  - All communication required asynchronous JSON serialization and deserialization over the bridge.
+  - Could not perform synchronous UI updates, causing white screen glitches during fast scrolling.
 
-   React Native Architecture:
-   [JS Thread] <=== JSI / Bridge ===> [Shadow Thread (Yoga)] <===> [UI Main Thread]
+#### New Architecture:
+```mermaid
+graph LR
+    A[JavaScript Thread] <-->|JSI Direct Memory Access| B[C++ Core Engine]
+    B <--> C[Fabric Renderer - UI]
+    B <--> D[TurboModules - Native APIs]
 ```
+
+1. **JSI (JavaScript Interface)**: Replaces the JSON bridge. Allows JavaScript code to hold direct references to C++ host objects and invoke native methods synchronously and directly.
+2. **Fabric Renderer**: Next-generation rendering engine. Unifies UI layout (Yoga) in C++, enabling concurrent React 18 rendering and synchronous layouts.
+3. **TurboModules**: Replaces native modules. Native modules are lazy-loaded only when requested rather than all initializing on app startup.
+4. **Codegen**: Generates static type-safe C++ bindings from TypeScript / Flow specs to guarantee type safety between JS and native layers.

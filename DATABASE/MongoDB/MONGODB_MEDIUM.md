@@ -1,62 +1,118 @@
-# 🍃 Database & MongoDB - Medium Questions From Notes
+# 🍃 MongoDB - Medium Questions
 
-> **Topics from Notes Covered:** Populate (in DB), Query in Populate, Compound Indexing, Inbound Indexing.
+> **Topics Covered:** Complete Guide to MongoDB Indexing (All 9 Types) ⭐⭐⭐, Index Options (`unique`, `sparse`, `partialFilterExpression`, TTL), Aggregation Pipeline (`$match`, `$group`, `$project`, `$lookup`, `$unwind`), Mongoose ODM (`populate`, Schemas, Hooks), Embedded Documents vs References.
 
 ---
 
-### Q1: Populate in DB (Mongoose `populate`)
-**Question (From Notes):** What is `populate()` in MongoDB/Mongoose and how does it work under the hood?
+### Q1: Types of Indexing in MongoDB ⭐⭐⭐
+**Question:** Explain all 9 types of Indexes in MongoDB and their options. How do you measure query execution performance?
 
 **Answer:**
-Because MongoDB does not natively support relational SQL `JOIN`s, Mongoose `populate()` replaces specified document ID references with the actual documents from referenced collections by performing a secondary `$in` batch query behind the scenes in Node.js application memory.
+Indexes in MongoDB improve query execution speed by creating ordered B-Tree data structures, avoiding costly full collection scans (`COLLSCAN`).
 
+#### 9 Index Types:
+1. **Default `_id` Index**: Automatically created unique index on the primary `_id` field.
+2. **Single Field Index**: User-defined index on a single document key:
+   ```javascript
+   db.users.createIndex({ email: 1 }); // 1 = Ascending, -1 = Descending
+   ```
+3. **Compound Index**: Index on multiple fields (order of fields matters - follows Left-Prefix rule):
+   ```javascript
+   db.users.createIndex({ status: 1, age: -1 });
+   ```
+4. **Multikey Index**: Created automatically when an indexed field contains an **array** value (indexes each array element).
+5. **Text Index**: Enables full-text search across string fields with word stemming and stop-words:
+   ```javascript
+   db.articles.createIndex({ title: "text", content: "text" });
+   db.articles.find({ $text: { $search: "fullstack javascript" } });
+   ```
+6. **Geospatial Index (`2dsphere` / `2d`)**: Calculates distances on sphere/flat surface for coordinate queries (`$near`, `$geoWithin`).
+7. **Hashed Index**: Hashes field value; used for even partition distribution across shards in MongoDB Sharding.
+8. **Wildcard Index**: Indexes all arbitrary or unknown nested dynamic sub-fields (`db.products.createIndex({ "attributes.$**": 1 })`).
+9. **Clustered Index**: Stores collection documents directly ordered by clustered index key.
+
+#### Important Index Options:
+- **`unique: true`**: Rejects duplicate entries (`db.users.createIndex({ email: 1 }, { unique: true })`).
+- **`sparse: true`**: Only indexes documents that contain the indexed field.
+- **`expireAfterSeconds` (TTL Index)**: Automatically deletes documents after a duration (ideal for OTPs and sessions).
+- **`partialFilterExpression`**: Indexes only documents matching a specific filter condition.
+
+#### Performance Analysis with `explain()`:
 ```javascript
-const User = require('../models/User');
-
-async function getUserProfile(userId) {
-  return await User.findById(userId).populate('profile').exec();
-}
+db.users.find({ email: "test@test.com" }).explain("executionStats");
+// Look for stage: "IXSCAN" (Index Scan - Fast) vs "COLLSCAN" (Collection Scan - Slow)
 ```
 
 ---
 
-### Q2: Query in Populate (Filtering, Sorting, and Projections Inside Populate)
-**Question (From Notes):** How do you filter, sort, and limit query results inside `populate()`?
+### Q2: Aggregation Pipeline Deep Dive
+**Question:** Explain the MongoDB Aggregation Pipeline with an example of `$match`, `$group`, `$project`, `$sort`, and `$lookup`.
 
 **Answer:**
+The Aggregation Framework processes documents through a multi-stage pipeline:
+
 ```javascript
-async function getDeliveredOrders(userId) {
-  return await User.findById(userId)
-    .populate({
-      path: 'orders',
-      match: { status: 'DELIVERED', amount: { $gte: 100 } }, // Query filter inside populated model
-      select: 'orderNumber amount createdAt items',
-      options: { sort: { createdAt: -1 }, limit: 5 },
-      populate: {
-        path: 'items.product', // Nested populate
-        select: 'name price'
-      }
-    })
-    .exec();
-}
+db.orders.aggregate([
+  // Stage 1: Filter completed orders in 2026
+  { $match: { status: "completed", year: 2026 } },
+
+  // Stage 2: Join with users collection (Left Outer Join)
+  {
+    $lookup: {
+      from: "users",
+      localField: "userId",
+      foreignField: "_id",
+      as: "customerDetails"
+    }
+  },
+
+  // Stage 3: Unwind joined array
+  { $unwind: "$customerDetails" },
+
+  // Stage 4: Group by customer and compute total spend
+  {
+    $group: {
+      _id: "$userId",
+      customerName: { $first: "$customerDetails.name" },
+      totalSpent: { $sum: "$totalAmount" },
+      orderCount: { $sum: 1 }
+    }
+  },
+
+  // Stage 5: Sort by highest spenders
+  { $sort: { totalSpent: -1 } },
+
+  // Stage 6: Project final output fields
+  {
+    $project: {
+      _id: 0,
+      userId: "$_id",
+      customerName: 1,
+      totalSpent: 1,
+      orderCount: 1
+    }
+  }
+]);
 ```
 
 ---
 
-### Q3: Compound Indexing vs Single-Field (Inbound) Indexing & The ESR Rule
-**Question (From Notes):** What is Compound Indexing and how does it work?
+### Q3: Mongoose `populate()` vs Embedded Documents
+**Question:** When should you embed subdocuments versus reference documents with Mongoose `populate()`?
 
 **Answer:**
-- **Single-Field / Inbound Index**: Indexes a single attribute (e.g. `{ email: 1 }`).
-- **Compound Index**: Indexes multiple fields together in a single B-Tree structure. The order of fields matters significantly.
-
-**The ESR (Equality, Sort, Range) Rule:**
-1. **Equality (E)**: Fields matching exact equality (`status: "ACTIVE"`) go **first**.
-2. **Sort (S)**: Fields used for ordering (`sort: { createdAt: -1 }`) go **second**.
-3. **Range (R)**: Fields queried with range operators (`$gt`, `$lte`, `$in`) go **last**.
+- **Embedding (Denormalization)**:
+  - *When to use:* 1-to-1 or 1-to-Few relationships where child data is always retrieved together with the parent (e.g., User addresses, Order line items).
+  - *Advantage:* Fast single-document reads without joining.
+- **Referencing (Normalization with `populate`)**:
+  - *When to use:* 1-to-Many or Many-to-Many relationships where child documents grow unboundedly or are queried independently (e.g., Users $\leftrightarrow$ Posts $\leftrightarrow$ Comments).
 
 ```javascript
-// Query: db.orders.find({ status: "PAID", total: { $gte: 500 } }).sort({ createdAt: -1 })
-// Optimal Compound Index:
-db.orders.createIndex({ status: 1, createdAt: -1, total: 1 });
+// Mongoose Populate Example
+const PostSchema = new mongoose.Schema({
+  title: String,
+  author: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+});
+
+const post = await Post.findById(postId).populate('author', 'name email');
 ```

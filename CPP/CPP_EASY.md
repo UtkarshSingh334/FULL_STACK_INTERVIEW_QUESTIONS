@@ -135,3 +135,73 @@ int findMissing(const vector<int>& arr, int n) {
   return xorAll ^ xorArr;
 }
 ```
+---
+
+### Q8: Prime Number Check ($O(\sqrt{n})$)
+**Question:** How do you check whether a number is prime in C++?
+
+```cpp
+#include <iostream>
+using namespace std;
+
+bool isPrime(int n) {
+    if (n < 2) return false;
+    for (int i = 2; i * i <= n; i++) {
+        if (n % i == 0) return false;
+    }
+    return true;
+}
+
+int main() {
+    int n = 17;
+    cout << (isPrime(n) ? "Prime" : "Not Prime") << endl;
+    return 0;
+}
+```
+
+---
+
+### Q9: Armstrong Number Check
+**Question:** How do you verify an Armstrong number in C++?
+
+```cpp
+#include <iostream>
+using namespace std;
+
+bool isArmstrong(int n) {
+    int original = n, sum = 0;
+    while (n > 0) {
+        int digit = n % 10;
+        sum += (digit * digit * digit);
+        n /= 10;
+    }
+    return sum == original;
+}
+
+int main() {
+    int n = 153;
+    cout << (isArmstrong(n) ? "Armstrong Number" : "Not an Armstrong Number") << endl;
+    return 0;
+}
+```
+
+---
+
+### Q10: Swap Two Variables Without a Third Variable
+**Question:** How do you swap two variables without a temporary third variable in C++?
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int main() {
+    int a = 10, b = 20;
+
+    a = a + b;
+    b = a - b;
+    a = a - b;
+
+    cout << "a: " << a << ", b: " << b << endl; // a: 20, b: 10
+    return 0;
+}
+```

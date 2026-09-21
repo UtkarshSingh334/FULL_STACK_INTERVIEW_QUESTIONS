@@ -1,132 +1,319 @@
-# ⚛️ React - Medium Questions From Notes
+# ⚛️ React - Medium Questions
 
-> **Topics from Notes Covered:** `useRef`, Context API, Rendering Website Optimization (`React.memo`, `useMemo`, `useCallback`), CORS handling in frontend/full-stack.
+> **Topics Covered:** `useEffect` Lifecycle & Cleanup, `useRef` (DOM Access & Mutable Values), Context API Flow Structure (In-Depth), `useReducer` Hook & State Management (In-Depth), `useReducer` vs Redux vs RTK vs RTK Query (In-Depth Architecture Matrix), `useMemo` vs `useCallback`, Controlled vs Uncontrolled Components, Custom Hooks.
 
 ---
 
-### Q1: `useRef`
-**Question (From Notes):** What is `useRef` and what are its primary use cases?
+### Q1: `useEffect` Hook Lifecycle & Cleanup ⭐⭐
+**Question:** Explain the dependency array in `useEffect`. How do you replicate `componentDidMount`, `componentDidUpdate`, and `componentWillUnmount`?
 
 **Answer:**
-`useRef(initialValue)` returns a mutable object `{ current: initialValue }` whose reference persists across renders.
-- **Key Property**: Modifying `.current` **does NOT trigger a component re-render**.
-
-**Use Cases:**
-1. **Direct DOM Access**: Focusing inputs, measuring element sizes, canvas drawing.
-2. **Storing Mutable Values Across Renders**: Storing interval/timeout IDs, previous state values.
+- **No Dependency Array**: Runs on initial mount and **after every single re-render**.
+- **Empty Array (`[]`)**: Runs **only once on mount** (`componentDidMount`).
+- **With Dependencies (`[a, b]`)**: Runs on mount and whenever `a` or `b` value changes (`componentDidUpdate`).
+- **Cleanup Function**: Returned by the effect; runs before the component unmounts (`componentWillUnmount`) and before re-running the effect on dependency change (cancels active timers, removes event listeners, aborts network fetch).
 
 ```jsx
-import React, { useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 
-export function TimerApp() {
-  const [seconds, setSeconds] = useState(0);
-  const timerRef = useRef(null); // Holds timer ID without re-rendering
-  const inputRef = useRef(null); // Direct DOM node
+function WindowTracker() {
+  const [width, setWidth] = useState(window.innerWidth);
 
-  const start = () => {
-    if (timerRef.current) return;
-    timerRef.current = setInterval(() => setSeconds(s => s + 1), 1000);
-  };
+  useEffect(() => {
+    const handleResize = () => setWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
 
-  const stop = () => {
-    clearInterval(timerRef.current);
-    timerRef.current = null;
-  };
+    // Cleanup function
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []); // Empty array: Setup once on mount, cleanup on unmount
 
-  return (
-    <div>
-      <input ref={inputRef} placeholder="Focus me..." />
-      <button onClick={() => inputRef.current.focus()}>Focus</button>
-      <h2>Seconds: {seconds}</h2>
-      <button onClick={start}>Start</button>
-      <button onClick={stop}>Stop</button>
-    </div>
-  );
+  return <p>Window Width: {width}px</p>;
 }
 ```
 
 ---
 
-### Q2: Context API
-**Question (From Notes):** What is the React Context API and what problem does it solve?
+### Q2: `useRef` Hook: DOM References & Mutable Values
+**Question:** What is `useRef` and how does it differ from `useState`?
 
 **Answer:**
-Context API provides a way to pass data through the component tree without having to pass props down manually at every level (**Props Drilling**).
+- **`useRef(initialValue)`** returns a mutable ref object `{ current: initialValue }` whose `.current` property persists for the entire lifetime of the component.
+- **Key Difference:** Updating `ref.current` **does not trigger a component re-render**, whereas updating `useState` always triggers a re-render.
+
+#### Two Primary Use Cases:
+1. **Accessing underlying Real DOM nodes** (Focus input, measure element dimensions, scroll to view).
+2. **Storing mutable instance variables** without re-rendering (Timer IDs, previous prop values).
 
 ```jsx
-import React, { createContext, useContext, useState } from 'react';
+import { useRef, useEffect } from 'react';
 
-const ThemeContext = createContext();
+function AutoFocusInput() {
+  const inputRef = useRef(null);
+  const renderCount = useRef(1);
 
-export function ThemeProvider({ children }) {
-  const [theme, setTheme] = useState("dark");
-  return (
-    <ThemeContext.Provider value={{ theme, setTheme }}>
-      {children}
-    </ThemeContext.Provider>
-  );
-}
-
-export function ThemedButton() {
-  const { theme, setTheme } = useContext(ThemeContext);
-  return (
-    <button onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
-      Current: {theme}
-    </button>
-  );
-}
-```
-
----
-
-### Q3: Rendering Website: How We Make Website More Optimized
-**Question (From Notes):** How do we optimize React website rendering performance?
-
-**Answer:**
-1. **`React.memo`**: Skips re-rendering a component if its props haven't changed (shallow comparison).
-2. **`useMemo`**: Caches the result of an expensive calculation.
-3. **`useCallback`**: Caches function instances so child components receiving functions as props don't re-render unnecessarily.
-4. **Code Splitting (`React.lazy` & `Suspense`)**: Loads routes/components on-demand to reduce initial bundle size.
-
-```jsx
-import React, { useState, useMemo, useCallback } from 'react';
-
-const UserItem = React.memo(({ user, onDelete }) => {
-  return (
-    <div>
-      <span>{user.name}</span>
-      <button onClick={() => onDelete(user.id)}>Delete</button>
-    </div>
-  );
-});
-
-export function UserList({ users }) {
-  const [query, setQuery] = useState("");
-
-  const filtered = useMemo(() => {
-    return users.filter(u => u.name.toLowerCase().includes(query.toLowerCase()));
-  }, [users, query]);
-
-  const handleDelete = useCallback((id) => {
-    console.log("Delete user:", id);
+  useEffect(() => {
+    inputRef.current.focus(); // Direct DOM access
   }, []);
 
+  useEffect(() => {
+    renderCount.current += 1; // Tracks renders without causing infinite loop
+  });
+
+  return <input ref={inputRef} placeholder="Focused on load" />;
+}
+```
+
+---
+
+### Q3: Context API Flow Structure ⭐⭐⭐
+**Question:** Explain the React Context API flow structure. How does it prevent Prop Drilling? Provide a complete implementation example with separate context and provider files.
+
+**Answer:**
+- **Prop Drilling Problem**: Passing props down through multiple intermediary component layers that do not need the data themselves just to reach a deeply nested child.
+- **Context API Flow:**
+  ```
+  1. createContext() --> Creates Context Object
+  2. <Context.Provider value={...}> --> Wraps Component Tree & Supplies Global Value
+  3. useContext(Context) --> Deeply nested components consume value directly
+  ```
+
+#### Recommended Architecture: Separate Provider Pattern
+
+```jsx
+// 1. context/AuthContext.jsx
+import { createContext, useContext, useState } from 'react';
+
+const AuthContext = createContext(null);
+
+export function AuthProvider({ children }) {
+  const [user, setUser] = useState(null);
+
+  const login = (userData) => setUser(userData);
+  const logout = () => setUser(null);
+
   return (
-    <div>
-      <input value={query} onChange={e => setQuery(e.target.value)} />
-      {filtered.map(u => (
-        <UserItem key={u.id} user={u} onDelete={handleDelete} />
-      ))}
-    </div>
+    <AuthContext.Provider value={{ user, login, logout, isAuthenticated: !!user }}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+// Custom Hook for clean consumption
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+}
+```
+
+```jsx
+// 2. main.jsx - Wrap Application
+import { AuthProvider } from './context/AuthContext';
+import App from './App';
+
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <AuthProvider>
+    <App />
+  </AuthProvider>
+);
+```
+
+```jsx
+// 3. components/Navbar.jsx - Direct Consumption
+import { useAuth } from '../context/AuthContext';
+
+export function Navbar() {
+  const { user, logout, isAuthenticated } = useAuth();
+
+  return (
+    <nav>
+      {isAuthenticated ? (
+        <div>
+          <span>Welcome, {user.name}</span>
+          <button onClick={logout}>Logout</button>
+        </div>
+      ) : (
+        <span>Please Log In</span>
+      )}
+    </nav>
   );
 }
 ```
 
 ---
 
-### Q4: CORS (Cross-Origin Resource Sharing)
-**Question (From Notes):** What is CORS, and why do frontend applications run into CORS errors?
+### Q4: `useReducer()` Hook: Managing Complex State ⭐⭐⭐
+**Question:** What is `useReducer()`? Explain its flow, syntax, action payloads, and pure reducer rules. Compare `useState()` vs `useReducer()`.
 
 **Answer:**
-CORS is a browser security mechanism that restricts a web application on one domain (e.g. `http://localhost:3000`) from requesting resources from a different domain (e.g. `http://api.backend.com`) unless the backend sends the appropriate HTTP response header:
-`Access-Control-Allow-Origin: http://localhost:3000`
+`useReducer()` is a React Hook designed for **complex state logic** where the next state depends on the previous state or involves multiple sub-values.
+
+#### Syntax & Flow:
+```
+const [state, dispatch] = useReducer(reducer, initialState);
+UI Event --> dispatch({ type: 'ACTION_TYPE', payload: data }) --> Reducer(state, action) --> New State --> Re-render
+```
+
+#### Rules of a Reducer Function:
+1. **Must be a Pure Function**: No side effects (no API calls, timers, or random numbers inside reducer).
+2. **Never Mutate State**: Always return a new state object using spread `{ ...state, key: value }`.
+
+#### Complete Form Example:
+```jsx
+import { useReducer } from 'react';
+
+const initialState = { name: '', email: '', count: 0 };
+
+function formReducer(state, action) {
+  switch (action.type) {
+    case 'SET_FIELD':
+      return { ...state, [action.field]: action.payload };
+    case 'INCREMENT_COUNT':
+      return { ...state, count: state.count + 1 };
+    case 'RESET':
+      return initialState;
+    default:
+      throw new Error(`Unhandled action type: ${action.type}`);
+  }
+}
+
+export function RegistrationForm() {
+  const [state, dispatch] = useReducer(formReducer, initialState);
+
+  return (
+    <form onSubmit={(e) => e.preventDefault()}>
+      <input 
+        value={state.name} 
+        onChange={(e) => dispatch({ type: 'SET_FIELD', field: 'name', payload: e.target.value })} 
+        placeholder="Name" 
+      />
+      <input 
+        value={state.email} 
+        onChange={(e) => dispatch({ type: 'SET_FIELD', field: 'email', payload: e.target.value })} 
+        placeholder="Email" 
+      />
+      <p>Click Count: {state.count}</p>
+      <button type="button" onClick={() => dispatch({ type: 'INCREMENT_COUNT' })}>Increment</button>
+      <button type="button" onClick={() => dispatch({ type: 'RESET' })}>Reset</button>
+    </form>
+  );
+}
+```
+
+---
+
+### Q5: `useReducer` vs Redux vs Redux Toolkit (RTK) vs RTK Query ⭐⭐⭐
+**Question:** Compare `useReducer`, Redux, Redux Toolkit (RTK), and RTK Query in terms of architecture, boilerplate, caching, and use cases.
+
+**Answer:**
+
+| Feature | `useReducer()` | Traditional Redux | Redux Toolkit (RTK) | RTK Query |
+| :--- | :--- | :--- | :--- | :--- |
+| **Scope** | Local component / context tree | Global application store | Global application store | Global Server State & Caching |
+| **Boilerplate** | Low | High (Action creators, constants, reducers) | Low (`createSlice` bundles actions + reducers) | Extremely Low (Declarative API slices) |
+| **State Mutation** | Manual immutable copies (`{...state}`) | Manual immutable copies | Uses **Immer** internally (write "mutating" logic safely) | Automatic normalized caching |
+| **Async Handling** | Requires manual `useEffect` / callbacks | Requires `redux-thunk` / `redux-saga` | Built-in `createAsyncThunk` | Built-in (Automatic `isLoading`, `isError`, refetching) |
+| **Best For** | Medium local complex state | Legacy codebases | Global client UI state | Backend API data fetching, mutations, and caching |
+
+#### Modern Redux Toolkit (RTK) + RTK Query Example:
+
+```javascript
+// 1. store/apiSlice.js (RTK Query)
+import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+
+export const userApi = createApi({
+  reducerPath: 'userApi',
+  baseQuery: fetchBaseQuery({ baseUrl: 'https://api.example.com/' }),
+  tagTypes: ['User'],
+  endpoints: (builder) => ({
+    getUsers: builder.query({
+      query: () => 'users',
+      providesTags: ['User'],
+    }),
+    addUser: builder.mutation({
+      query: (newUser) => ({
+        url: 'users',
+        method: 'POST',
+        body: newUser,
+      }),
+      invalidatesTags: ['User'], // Auto-refetches getUsers on mutation!
+    }),
+  }),
+});
+
+export const { useGetUsersQuery, useAddUserMutation } = userApi;
+```
+
+```javascript
+// 2. store/store.js
+import { configureStore } from '@reduxjs/toolkit';
+import { userApi } from './apiSlice';
+
+export const store = configureStore({
+  reducer: {
+    [userApi.reducerPath]: userApi.reducer,
+  },
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware().concat(userApi.middleware),
+});
+```
+
+```jsx
+// 3. components/UserList.jsx
+import { useGetUsersQuery } from '../store/apiSlice';
+
+export function UserList() {
+  const { data: users, isLoading, isError } = useGetUsersQuery();
+
+  if (isLoading) return <p>Loading users...</p>;
+  if (isError) return <p>Error loading data.</p>;
+
+  return (
+    <ul>
+      {users.map(u => <li key={u.id}>{u.name}</li>)}
+    </ul>
+  );
+}
+```
+
+---
+
+### Q6: `useMemo` vs `useCallback`
+**Question:** What is the difference between `useMemo` and `useCallback`? When should you use them?
+
+**Answer:**
+- **`useMemo(() => fn(), [deps])`**: Caches and returns the **computed return value** of an expensive calculation to avoid recalculating on every re-render.
+- **`useCallback(fn, [deps])`**: Caches and returns the **function instance definition itself** to prevent child components wrapped in `React.memo` from re-rendering due to new function memory references.
+
+```jsx
+import { useState, useMemo, useCallback } from 'react';
+
+function ProductDashboard({ products }) {
+  const [query, setQuery] = useState('');
+
+  // useMemo: Memoizes filtered array result
+  const filteredProducts = useMemo(() => {
+    return products.filter(p => p.name.toLowerCase().includes(query.toLowerCase()));
+  }, [products, query]);
+
+  // useCallback: Memoizes function reference passed to memoized child
+  const handleDelete = useCallback((id) => {
+    console.log("Delete product ID:", id);
+  }, []);
+
+  return <ProductList items={filteredProducts} onDelete={handleDelete} />;
+}
+```
+
+---
+
+### Q7: Controlled vs Uncontrolled Components
+**Question:** Compare Controlled vs Uncontrolled components in React.
+
+**Answer:**
+- **Controlled Component**: Input form data is handled by React component state (`value={state}` + `onChange={setState}`). Single source of truth.
+- **Uncontrolled Component**: Input form data is handled by the browser Real DOM itself; accessed on submit via `useRef`.

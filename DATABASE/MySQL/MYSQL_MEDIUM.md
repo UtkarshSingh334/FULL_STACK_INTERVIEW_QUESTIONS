@@ -1,49 +1,62 @@
-# 🐬 MySQL - Medium Interview Questions & Solutions
+# 🐬 MySQL - Medium Questions
+
+> **Topics Covered:** SQL Commands (DDL, DML, DQL, DCL, TCL), Joins (INNER, LEFT, RIGHT, FULL, CROSS, SELF), `WHERE` vs `HAVING`, Subqueries vs Common Table Expressions (CTEs), Window Functions (`ROW_NUMBER()`, `RANK()`, `DENSE_RANK()`).
 
 ---
 
-### Q1: Visual Breakdown of SQL JOINs
+### Q1: SQL Joins Master Guide ⭐⭐
+**Question:** Explain all types of SQL Joins with syntax and Venn diagram logic.
+
 **Answer:**
-- **`INNER JOIN`**: Returns records with matching values in both tables.
-- **`LEFT JOIN` (or LEFT OUTER)**: Returns all records from left table, and matched records from right table (fills `NULL` if no match).
-- **`RIGHT JOIN`**: Returns all records from right table, and matched records from left table.
-- **`FULL OUTER JOIN`**: Returns all records when there is a match in either left or right table (In MySQL, simulated using `LEFT JOIN UNION RIGHT JOIN`).
+1. **INNER JOIN**: Returns records that have matching values in both tables.
+2. **LEFT (OUTER) JOIN**: Returns all records from the left table and matched records from the right table (NULL if no match).
+3. **RIGHT (OUTER) JOIN**: Returns all records from the right table and matched records from the left table.
+4. **FULL (OUTER) JOIN**: Returns all records when there is a match in either left or right table (emulated in MySQL via `UNION` of LEFT and RIGHT joins).
+5. **CROSS JOIN**: Cartesian product (every row of Table A paired with every row of Table B).
+6. **SELF JOIN**: A regular join in which a table is joined with itself (e.g., Employee and Manager hierarchy).
 
 ```sql
--- Fetch all employees with their department names (including employees without department)
-SELECT 
-  e.employee_id, 
-  e.first_name, 
-  d.department_name
-FROM employees e
-LEFT JOIN departments d ON e.department_id = d.department_id;
+-- Employee & Manager Self Join
+SELECT e.name AS Employee, m.name AS Manager
+FROM Employees e
+LEFT JOIN Employees m ON e.manager_id = m.id;
 ```
 
 ---
 
-### Q2: Common Table Expressions (CTEs) vs Subqueries
+### Q2: `WHERE` vs `HAVING` Clause
+**Question:** What is the difference between `WHERE` and `HAVING` in SQL?
+
 **Answer:**
-A CTE (`WITH` clause) defines a temporary named result set within a single query, providing superior readability and recursion capability compared to deeply nested subqueries.
+| Criteria | `WHERE` Clause | `HAVING` Clause |
+| :--- | :--- | :--- |
+| **Execution Order** | Executes **before** `GROUP BY` | Executes **after** `GROUP BY` and aggregation |
+| **Filter Target** | Filters individual table rows | Filters aggregated group results |
+| **Aggregate Functions**| Cannot contain aggregate functions (`SUM`, `COUNT`) | Can contain aggregate functions (`COUNT(*) > 5`) |
 
 ```sql
--- CTE Example: Find employees earning more than their department's average
-WITH DeptAvg AS (
-  SELECT department_id, AVG(salary) AS avg_salary
-  FROM employees
-  GROUP BY department_id
+SELECT department_id, COUNT(*) AS total_employees, AVG(salary) AS avg_sal
+FROM Employees
+WHERE status = 'Active'               -- Row filter before grouping
+GROUP BY department_id
+HAVING AVG(salary) > 60000;          -- Group filter after aggregation
+```
+
+---
+
+### Q3: Window Functions: `ROW_NUMBER()`, `RANK()`, `DENSE_RANK()`
+**Question:** Compare `ROW_NUMBER()`, `RANK()`, and `DENSE_RANK()`. Write a query to find the 2nd highest salary in each department.
+
+**Answer:**
+- `ROW_NUMBER()`: Assigns unique consecutive numbers (1, 2, 3, 4) regardless of duplicate values.
+- `RANK()`: Assigns same rank to duplicates, but **skips ranks** (1, 2, 2, 4).
+- `DENSE_RANK()`: Assigns same rank to duplicates **without skipping** (1, 2, 2, 3).
+
+```sql
+WITH RankedSalaries AS (
+  SELECT id, name, department_id, salary,
+         DENSE_RANK() OVER (PARTITION BY department_id ORDER BY salary DESC) as sal_rank
+  FROM Employees
 )
-SELECT e.first_name, e.salary, da.avg_salary
-FROM employees e
-JOIN DeptAvg da ON e.department_id = da.department_id
-WHERE e.salary > da.avg_salary;
+SELECT * FROM RankedSalaries WHERE sal_rank = 2;
 ```
-
----
-
-### Q3: Analyzing Queries with `EXPLAIN`
-**Answer:**
-`EXPLAIN SELECT ...` reveals how MySQL executes a query:
-- **`type`**: `ALL` (Full table scan - bad), `index` (Full index scan), `range` (Index range scan - good), `ref` (Non-unique index lookup - good), `const`/`eq_ref` (Primary key lookup - fastest).
-- **`possible_keys`**: Indexes MySQL could use.
-- **`key`**: Index MySQL actually chose.
-- **`rows`**: Estimated number of rows MySQL must examine.

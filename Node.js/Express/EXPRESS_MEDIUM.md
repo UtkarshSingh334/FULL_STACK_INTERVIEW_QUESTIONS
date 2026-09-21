@@ -1,124 +1,91 @@
-# 🟢 Express & Node.js - Medium Questions From Notes
+# 🟢 Node.js & Express - Medium Questions
 
-> **Topics from Notes Covered:** Middleware Types & BATER Mnemonic, JWT Workflow, Why Only Bcrypt is Used for Password Hashing vs SHA-256, Rate Limiting (`ratelimiting`), CORS in Express.
+> **Topics Covered:** Express Middleware Architecture (Application, Router, Error-Handling, Third-Party), Authentication with JWT & Password Hashing with Bcrypt, RESTful API Standards & Status Codes, Error-Handling Middleware, CORS & Security Headers (Helmet).
 
 ---
 
-### Q1: Express Middleware & The BATER Types
-**Question (From Notes):** What is Express middleware? Explain the BATER types of middleware.
+### Q1: Express Middleware Architecture ⭐⭐
+**Question:** What is middleware in Express? Explain the different types of middleware and write a custom logger and auth middleware.
 
 **Answer:**
-Middleware functions have access to `req`, `res`, and `next()`.
+Middleware functions are functions that have access to the Request object (`req`), Response object (`res`), and the `next` middleware function in the application's request-response cycle.
 
-**BATER Types:**
-1. **B - Built-in**: Ships with Express (e.g. `express.json()`, `express.urlencoded()`, `express.static()`).
-2. **A - Application-level**: Attached to `app.use()` (e.g. logging, authentication).
-3. **T - Third-party**: Installed from npm (e.g. `cors()`, `helmet()`, `morgan()`).
-4. **E - Error-handling**: Defined with **4 arguments** `(err, req, res, next)`.
-5. **R - Router-level**: Attached to an `express.Router()` instance.
+#### Types of Middleware:
+1. **Application-level**: `app.use((req, res, next) => { ... })`
+2. **Router-level**: `router.use('/admin', authMiddleware)`
+3. **Built-in**: `express.json()`, `express.static('public')`
+4. **Third-party**: `cors()`, `morgan()`, `helmet()`
+5. **Error-handling**: Middleware taking 4 parameters: `(err, req, res, next)`
 
 ```javascript
-const express = require('express');
-const app = express();
-const router = express.Router();
+// Custom Logging Middleware
+const logger = (req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
+  next(); // Pass execution to next middleware
+};
 
-// 1. Built-in
-app.use(express.json());
-
-// 2. Application-level
-app.use((req, res, next) => {
-  console.log(`${req.method} ${req.url}`);
+// Custom Auth Middleware
+const requireAuth = (req, res, next) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) {
+    return res.status(401).json({ error: 'Unauthorized: No token provided' });
+  }
+  // verify token...
+  req.userId = 101;
   next();
-});
+};
 
-// 3. Router-level
-router.use((req, res, next) => {
-  if (!req.headers.authorization) return next(new Error("Unauthorized"));
-  next();
+app.use(logger);
+app.get('/api/protected', requireAuth, (req, res) => {
+  res.json({ message: 'Secret data', userId: req.userId });
 });
-router.get('/dashboard', (req, res) => res.send("Secure Dashboard"));
-app.use('/api', router);
+```
 
-// 4. Error-handling (Must have 4 parameters)
+---
+
+### Q2: Authentication with JWT (JSON Web Tokens) & Bcrypt
+**Question:** Explain how JWT authentication and bcrypt password hashing work in a Node/Express backend.
+
+**Answer:**
+1. **Password Hashing (Bcrypt)**:
+   - When registering, pass user password through `bcrypt.hash(password, 10)` with salted hashing.
+   - On login, compare plain password with stored hash via `bcrypt.compare()`.
+2. **JWT Flow**:
+   - JWT contains 3 base64 encoded parts: `Header.Payload.Signature`.
+   - On valid login, server signs payload with secret key (`jwt.sign()`) and returns token to client.
+   - Client stores token and sends it in `Authorization: Bearer <token>` header for protected routes.
+
+```javascript
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
+
+// Register: Hash password
+const hashedPassword = await bcrypt.hash('mySecretPassword', 10);
+
+// Login: Verify & Generate JWT
+const isMatch = await bcrypt.compare('mySecretPassword', hashedPassword);
+if (isMatch) {
+  const token = jwt.sign({ userId: 101, role: 'admin' }, process.env.JWT_SECRET, { expiresIn: '1h' });
+  res.json({ token });
+}
+```
+
+---
+
+### Q3: Global Error-Handling Middleware in Express
+**Question:** How do you implement centralized error handling in Express?
+
+**Answer:**
+```javascript
+// 4-argument error handling middleware placed at the VERY END of app.js
 app.use((err, req, res, next) => {
-  console.error("Error:", err.message);
-  res.status(500).json({ error: true, message: err.message });
+  const statusCode = err.statusCode || 500;
+  console.error('[Error Occurred]:', err.stack);
+
+  res.status(statusCode).json({
+    success: false,
+    message: err.message || 'Internal Server Error',
+    ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
+  });
 });
-```
-
----
-
-### Q2: JWT (JSON Web Token) Workflow
-**Question (From Notes):** Explain the JWT structure and authentication workflow.
-
-**Answer:**
-A JWT has 3 parts: `Header.Payload.Signature`.
-- **Header**: Algorithm & token type.
-- **Payload**: Claims (e.g., `userId`, `role`, expiration `exp`).
-- **Signature**: `HMACSHA256(base64Url(header) + "." + base64Url(payload), secretKey)` to prevent tampering.
-
-**Workflow:**
-1. Client logs in with email & password.
-2. Server validates credentials and returns a short-lived **Access Token** (15m) + a secure **Refresh Token** (7d in `HttpOnly` cookie).
-3. Client sends Access Token in `Authorization: Bearer <token>` header for subsequent requests.
-4. When Access Token expires (`401`), client hits `/refresh-token` with the Refresh Token to obtain a new Access Token.
-
----
-
-### Q3: Why Only `bcrypt` is Used for Password Hashing (vs SHA-256)
-**Question (From Notes):** Why is only `bcrypt` recommended for password hashing instead of fast hashing algorithms like SHA-256?
-
-**Answer:**
-1. **Speed Vulnerability**: SHA-256 is designed to be extremely fast for file checksums. Modern GPUs can calculate billions of SHA-256 hashes per second, making brute-force dictionary attacks trivial.
-2. **Work Factor / Adaptive Cost**: `bcrypt` has a configurable cost factor (`saltRounds`, e.g. 12). As computing hardware speeds up, the cost factor can be increased to make hashing intentionally computationally expensive.
-3. **Automatic Salt Generation**: `bcrypt` automatically generates and embeds a random 128-bit salt inside the output hash, completely defeating Rainbow Table attacks.
-
-```javascript
-const bcrypt = require('bcrypt');
-
-async function hashPassword(plainText) {
-  const salt = await bcrypt.genSalt(12);
-  return await bcrypt.hash(plainText, salt);
-}
-
-async function verifyPassword(plainText, hashedPassword) {
-  return await bcrypt.compare(plainText, hashedPassword);
-}
-```
-
----
-
-### Q4: Rate Limiting (`ratelimiting`)
-**Question (From Notes):** What is rate limiting and how is it implemented?
-
-**Answer:**
-Rate limiting restricts the number of requests a client can make in a specified time window to prevent brute-force attacks and Denial-of-Service (DoS).
-
-```javascript
-const rateLimit = require('express-rate-limit');
-
-const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // Limit 5 login attempts per IP per 15 minutes
-  message: { error: "Too many login attempts. Try again in 15 minutes." }
-});
-
-app.post('/api/login', loginLimiter, (req, res) => {
-  // Login handler
-});
-```
-
----
-
-### Q5: CORS (Cross-Origin Resource Sharing) in Express
-**Question (From Notes):** How do you configure CORS in an Express app?
-
-```javascript
-const cors = require('cors');
-
-app.use(cors({
-  origin: ['http://localhost:3000', 'https://myapp.com'],
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  credentials: true
-}));
 ```

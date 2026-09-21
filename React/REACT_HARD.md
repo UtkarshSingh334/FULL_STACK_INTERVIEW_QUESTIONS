@@ -1,45 +1,99 @@
-# ⚛️ React - Hard Questions From Notes
+# ⚛️ React - Advanced / Hard Questions
 
-> **Topics from Notes Covered:** Advanced React Website Optimization, Context API Re-render Mitigation, Custom Hooks Architecture.
+> **Topics Covered:** React Fiber Architecture (Reconciliation vs Commit Phases, Priority Lanes), React 18+ Concurrency (`useTransition`, `useDeferredValue`, Suspense), Code Splitting & Lazy Loading (`React.lazy`), Error Boundaries, Performance Profiling & Windowing / Virtualization.
 
 ---
 
-### Q1: Preventing Context API Re-render Cascades
-**Question (From Notes):** How do you optimize React Context API to prevent all consumer components from re-rendering on every state update?
+### Q1: React Fiber Architecture Deep Dive ⭐⭐⭐
+**Question:** What is React Fiber? How does it differ from the legacy Stack Reconciler? Explain Priority Lanes and the 2-phase rendering cycle.
 
 **Answer:**
-By default, whenever a Context Provider's value changes, **all** components calling `useContext(MyContext)` re-render, even if they only consume an unchanged property.
+- **React 15 Stack Reconciler**: Synchronous and recursive. Once rendering started, it could not be paused or interrupted, causing dropped frames (jank) during heavy UI rendering.
+- **React 16+ Fiber Reconciler**: Complete rewrite of React's core algorithm. Fiber represents a unit of work as a linked list of virtual fiber nodes.
+- **Key Features of Fiber:**
+  1. **Pause, Resume, and Abort Work**: Work can be split into chunks across browser frames (`requestIdleCallback` / scheduler).
+  2. **Priority Lanes**: High-priority user interactions (typing, clicking) interrupt low-priority offscreen rendering.
+  3. **Two-Phase Architecture**:
+     - **Phase 1: Render Phase (Asynchronous)**: React traverses fiber tree, calls component functions, calculates diffs. Can be paused, restarted, or aborted without side effects.
+     - **Phase 2: Commit Phase (Synchronous)**: React applies all DOM mutations, updates refs, and runs layout effects. Cannot be interrupted.
 
-**Optimization Strategies:**
-1. **Split State and Dispatch Contexts**: Separate mutable state from stable update functions.
-2. **Memoize Provider Value**: Always wrap context value in `useMemo`.
+---
+
+### Q2: React 18 Concurrency: `useTransition` vs `useDeferredValue`
+**Question:** How does `useTransition()` improve user input responsiveness during heavy re-renders?
+
+**Answer:**
+- `useTransition()` lets you mark state updates as **non-urgent transitions**, allowing high-priority updates (e.g. typing in an input) to execute immediately without being blocked by heavy list filtering.
 
 ```jsx
-import React, { createContext, useContext, useReducer, useMemo } from 'react';
+import { useState, useTransition } from 'react';
 
-const StateContext = createContext();
-const DispatchContext = createContext();
+function SearchComponent({ bigList }) {
+  const [input, setInput] = useState('');
+  const [list, setList] = useState(bigList);
+  const [isPending, startTransition] = useTransition();
 
-function reducer(state, action) {
-  switch (action.type) {
-    case 'INCREMENT': return { count: state.count + 1 };
-    default: return state;
-  }
-}
+  const handleChange = (e) => {
+    // 1. Urgent: Immediate typing feedback
+    setInput(e.target.value);
 
-export function CounterProvider({ children }) {
-  const [state, dispatch] = useReducer(reducer, { count: 0 });
+    // 2. Non-Urgent: Heavy list filtering deferred
+    startTransition(() => {
+      setList(bigList.filter(item => item.includes(e.target.value)));
+    });
+  };
 
   return (
-    <StateContext.Provider value={state}>
-      <DispatchContext.Provider value={dispatch}>
-        {children}
-      </DispatchContext.Provider>
-    </StateContext.Provider>
+    <div>
+      <input value={input} onChange={handleChange} />
+      {isPending && <p>Filtering list...</p>}
+      <ItemList items={list} />
+    </div>
   );
 }
-
-// Components only needing dispatch never re-render when state.count changes!
-export const useCounterDispatch = () => useContext(DispatchContext);
-export const useCounterState = () => useContext(StateContext);
 ```
+
+---
+
+### Q3: Error Boundaries in React
+**Question:** What are Error Boundaries? How do you implement them and what errors do they NOT catch?
+
+**Answer:**
+- **Error Boundaries** are React components that catch JavaScript errors anywhere in their child component tree, log the errors, and display a fallback UI instead of crashing the whole app.
+- Must be implemented as **Class Components** using `getDerivedStateFromError` (renders fallback) and `componentDidCatch` (logs error).
+
+```jsx
+import React from 'react';
+
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error("Uncaught error:", error, errorInfo);
+  }
+
+  returnFallback() {
+    return <h2>Something went wrong. Please refresh.</h2>;
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback || this.returnFallback();
+    }
+    return this.props.children;
+  }
+}
+```
+
+**Errors NOT Caught by Error Boundaries:**
+1. Event handlers (`onClick` - use standard `try/catch` inside handlers).
+2. Asynchronous code (`setTimeout`, `requestAnimationFrame`).
+3. Server-Side Rendering (SSR).
+4. Errors thrown inside the Error Boundary component itself.

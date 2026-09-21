@@ -1,50 +1,104 @@
-# 🎨 CSS - Easy Questions From Notes
+# 🎨 CSS - Easy Questions
 
-> **Topics from Notes Covered:** Types of CSS (Inline, Internal, External, CSS Modules), CSS Position types (`static`, `relative`, `absolute`, `fixed`, `sticky`).
-
----
-
-### Q1: Types of CSS
-**Question (From Notes):** What are the different types of CSS (ways to apply styling), and how do they differ?
-
-**Answer:**
-1. **Inline CSS**: Defined directly on HTML elements using the `style` attribute.
-   - *Example*: `<p style="color: blue; font-size: 16px;">Hello</p>`
-   - *Pros/Cons*: Highest specificity (`1-0-0-0`), but difficult to maintain and lacks reusability.
-2. **Internal CSS**: Defined inside `<style>` tags within the `<head>` section of an HTML document.
-   - *Example*: `<style> p { color: blue; } </style>`
-   - *Pros/Cons*: Scoped to single document; cannot be shared across multiple pages.
-3. **External CSS**: Written in separate `.css` files and linked using `<link rel="stylesheet" href="styles.css">`.
-   - *Pros/Cons*: Cached by browser across pages, clean separation of concerns. Industry standard.
-4. **CSS Modules**: Component-scoped CSS where class names are hashed at build time (e.g., in React/Next.js).
-   - *Example*: `import styles from './Button.module.css'; <button className={styles.btn}>`
-   - *Pros/Cons*: Completely prevents class name collisions.
+> **Topics Covered:** What is CSS, Types of CSS (Inline, Internal, External), CSS Box Model, Margin vs Padding, CSS Selectors & Specificity, Text & Font Styling, Colors & Units (`px`, `rem`, `em`, `%`, `vh`, `vw`), Display Property (`block`, `inline`, `inline-block`, `none`).
 
 ---
 
-### Q2: Position in CSS (`static`, `relative`, `absolute`, `fixed`, `sticky`)
-**Question (From Notes):** Explain all `position` values in CSS and how each alters document flow.
+### Q1: What is CSS and What are the 3 Ways to Apply It?
+**Question:** What is CSS? Explain the 3 methods to include CSS in an HTML document.
 
 **Answer:**
-1. **`static`** (Default): Follows normal document flow. `top`, `left`, `right`, `bottom`, and `z-index` have no effect.
-2. **`relative`**: Stays in the normal document flow. Offsets relative to its *own default position* without affecting sibling elements. Acts as a reference container for absolute children.
-3. **`absolute`**: Removed from the normal document flow. Positioned relative to the nearest **non-static ancestor** (`relative`, `absolute`, `fixed`, `sticky`).
-4. **`fixed`**: Removed from normal flow. Positioned relative to the **viewport**. Does not scroll with the page.
-5. **`sticky`**: Hybrid. Acts as `relative` until the viewport crosses a defined scroll threshold (e.g., `top: 0`), after which it sticks like `fixed` within its parent boundary.
+- **CSS (Cascading Style Sheets)** is used to style and lay out HTML documents (colors, layouts, fonts, animations).
+- **Three Ways to Apply CSS:**
+  1. **Inline CSS**: Applied directly to the HTML element using the `style` attribute.
+     ```html
+     <h1 style="color: blue; font-size: 24px;">Hello</h1>
+     ```
+  2. **Internal (Embedded) CSS**: Defined inside `<style>` tags within the `<head>` section.
+     ```html
+     <style>
+       h1 { color: blue; }
+     </style>
+     ```
+  3. **External CSS**: Linked via external `.css` file (Recommended for separation of concerns and caching).
+     ```html
+     <link rel="stylesheet" href="styles.css">
+     ```
+
+---
+
+### Q2: The CSS Box Model ⭐
+**Question:** Explain the CSS Box Model with all its components. What is `box-sizing: border-box`?
+
+**Answer:**
+Every HTML element is rendered as a rectangular box consisting of 4 concentric layers:
+1. **Content**: The actual text, image, or child elements.
+2. **Padding**: Transparent space between the content and the border.
+3. **Border**: The outline surrounding the padding.
+4. **Margin**: Transparent space outside the border separating the element from neighbors.
+
+```
++-----------------------------------+
+|              MARGIN               |
+|   +---------------------------+   |
+|   |          BORDER           |   |
+|   |   +-------------------+   |   |
+|   |   |      PADDING      |   |   |
+|   |   |   +-----------+   |   |   |
+|   |   |   |  CONTENT  |   |   |   |
+|   |   |   +-----------+   |   |   |
+|   |   +-------------------+   |   |
+|   +---------------------------+   |
++-----------------------------------+
+```
+
+**`content-box` vs `border-box`:**
+- `content-box` (Default): Total Width = `width + padding-left + padding-right + border-left + border-right`.
+- `border-box` (Recommended): Total Width = `width` (Padding and border are absorbed inside the defined width).
 
 ```css
-.card-container {
-  position: relative; /* Anchor for absolute child */
-  width: 300px;
-  height: 200px;
-}
-.badge {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-}
-.navbar {
-  position: sticky;
-  top: 0;
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 ```
+
+---
+
+### Q3: Margin vs Padding
+**Question:** What is the difference between Margin and Padding?
+
+**Answer:**
+| Criteria | Margin | Padding |
+| :--- | :--- | :--- |
+| **Location** | Outside the element's border | Inside the element's border |
+| **Background Color**| Transparent (shows parent element background) | Inherits the element's own background color |
+| **Clickable Area** | Not part of element's click target | Part of element's active clickable hitbox |
+| **Collapsing** | Vertical margins between sibling blocks can collapse | Never collapses |
+
+---
+
+### Q4: CSS Units: `px` vs `rem` vs `em` vs `%` vs `vh` / `vw`
+**Question:** Compare relative and absolute CSS units. When should you use `rem` over `em`?
+
+**Answer:**
+- **`px` (Pixels)**: Fixed, absolute unit. Does not adapt to user browser font-size preferences.
+- **`rem` (Root EM)**: Relative to the root `<html>` element's `font-size` (default `16px`). `1.5rem = 24px`. Ideal for responsive typography and spacing.
+- **`em`**: Relative to the `font-size` of its **immediate parent element** (can compound unintentionally in nested elements).
+- **`%`**: Relative to the parent element's dimensions.
+- **`vw` / `vh`**: Viewport Width / Viewport Height ($1vw = 1\%$ of viewport width).
+
+---
+
+### Q5: CSS Selector Specificity Hierarchy
+**Question:** How does CSS determine which rule takes precedence when multiple selectors target the same element?
+
+**Answer:**
+Specificity is calculated as a 4-part score: `(Inline, IDs, Classes/Attributes/Pseudo-classes, Elements/Pseudo-elements)`:
+1. `!important`: Overrides all normal specificity rules.
+2. **Inline styles** (`style="..."`): `(1, 0, 0, 0)`
+3. **IDs** (`#header`): `(0, 1, 0, 0)`
+4. **Classes, Attributes, Pseudo-classes** (`.btn`, `[type="text"]`, `:hover`): `(0, 0, 1, 0)`
+5. **Element & Pseudo-elements** (`div`, `p`, `::before`): `(0, 0, 0, 1)`
+6. **Universal Selector (`*`)**: `(0, 0, 0, 0)`
