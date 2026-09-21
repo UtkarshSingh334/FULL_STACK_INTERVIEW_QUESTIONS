@@ -1,91 +1,163 @@
-# 🟢 Node.js & Express - Medium Questions
+# 🟢 Express.js - Medium & API Architecture
 
-> **Topics Covered:** Express Middleware Architecture (Application, Router, Error-Handling, Third-Party), Authentication with JWT & Password Hashing with Bcrypt, RESTful API Standards & Status Codes, Error-Handling Middleware, CORS & Security Headers (Helmet).
+> **Topics Covered:** Express Middleware 5 Types, Centralized Error Handling, Request Validation (Zod / Joi), File Uploads with Multer, Pagination, Filtering, and Sorting Implementation, Rate Limiting, CORS Architecture, Helmet Security Headers, Preventing NoSQL Injection, Large App Folder Structure.
 
 ---
 
-### Q1: Express Middleware Architecture ⭐⭐
-**Question:** What is middleware in Express? Explain the different types of middleware and write a custom logger and auth middleware.
+### Q1: The 5 Types of Express Middleware
+**Question:** Explain the 5 different categories of middleware in Express with code examples.
 
 **Answer:**
-Middleware functions are functions that have access to the Request object (`req`), Response object (`res`), and the `next` middleware function in the application's request-response cycle.
+1. **Application-Level**: Bound to `app.use()` across the entire app.
+2. **Router-Level**: Bound to an instance of `express.Router()`.
+3. **Built-In**: `express.json()`, `express.urlencoded()`, `express.static()`.
+4. **Third-Party**: `cors()`, `helmet()`, `morgan()`.
+5. **Error-Handling**: Identified by **4 parameters** `(err, req, res, next)`.
 
-#### Types of Middleware:
-1. **Application-level**: `app.use((req, res, next) => { ... })`
-2. **Router-level**: `router.use('/admin', authMiddleware)`
-3. **Built-in**: `express.json()`, `express.static('public')`
-4. **Third-party**: `cors()`, `morgan()`, `helmet()`
-5. **Error-handling**: Middleware taking 4 parameters: `(err, req, res, next)`
+---
+
+### Q2: Centralized Global Error-Handling Middleware ⭐⭐
+**Question:** How do you implement a centralized error handling class and middleware in Express?
+
+**Answer:**
 
 ```javascript
-// Custom Logging Middleware
-const logger = (req, res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
-  next(); // Pass execution to next middleware
-};
-
-// Custom Auth Middleware
-const requireAuth = (req, res, next) => {
-  const token = req.headers.authorization?.split(' ')[1];
-  if (!token) {
-    return res.status(401).json({ error: 'Unauthorized: No token provided' });
+// 1. Custom Error Class
+class AppError extends Error {
+  constructor(message, statusCode) {
+    super(message);
+    this.statusCode = statusCode;
+    this.isOperational = true; // Distinguishes programmatic bugs from user errors
+    Error.captureStackTrace(this, this.constructor);
   }
-  // verify token...
-  req.userId = 101;
-  next();
-};
-
-app.use(logger);
-app.get('/api/protected', requireAuth, (req, res) => {
-  res.json({ message: 'Secret data', userId: req.userId });
-});
-```
-
----
-
-### Q2: Authentication with JWT (JSON Web Tokens) & Bcrypt
-**Question:** Explain how JWT authentication and bcrypt password hashing work in a Node/Express backend.
-
-**Answer:**
-1. **Password Hashing (Bcrypt)**:
-   - When registering, pass user password through `bcrypt.hash(password, 10)` with salted hashing.
-   - On login, compare plain password with stored hash via `bcrypt.compare()`.
-2. **JWT Flow**:
-   - JWT contains 3 base64 encoded parts: `Header.Payload.Signature`.
-   - On valid login, server signs payload with secret key (`jwt.sign()`) and returns token to client.
-   - Client stores token and sends it in `Authorization: Bearer <token>` header for protected routes.
-
-```javascript
-const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs');
-
-// Register: Hash password
-const hashedPassword = await bcrypt.hash('mySecretPassword', 10);
-
-// Login: Verify & Generate JWT
-const isMatch = await bcrypt.compare('mySecretPassword', hashedPassword);
-if (isMatch) {
-  const token = jwt.sign({ userId: 101, role: 'admin' }, process.env.JWT_SECRET, { expiresIn: '1h' });
-  res.json({ token });
 }
-```
 
----
+// 2. Global Error Middleware (Placed at very end of app.js)
+const errorHandler = (err, req, res, next) => {
+  err.statusCode = err.statusCode || 500;
+  err.message = err.message || 'Internal Server Error';
 
-### Q3: Global Error-Handling Middleware in Express
-**Question:** How do you implement centralized error handling in Express?
+  console.error(`[Error ${err.statusCode}]:`, err.message);
 
-**Answer:**
-```javascript
-// 4-argument error handling middleware placed at the VERY END of app.js
-app.use((err, req, res, next) => {
-  const statusCode = err.statusCode || 500;
-  console.error('[Error Occurred]:', err.stack);
-
-  res.status(statusCode).json({
+  res.status(err.statusCode).json({
     success: false,
-    message: err.message || 'Internal Server Error',
+    status: err.statusCode,
+    message: err.message,
     ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
   });
+};
+
+module.exports = { AppError, errorHandler };
+```
+
+---
+
+### Q3: Pagination, Filtering, and Sorting Implementation
+**Question:** Write an Express route handler implementing pagination, field filtering, and sorting.
+
+**Answer:**
+
+```javascript
+app.get('/api/products', async (req, res, next) => {
+  try {
+    // 1. Filtering
+    const queryObj = { ...req.query };
+    const excludedFields = ['page', 'sort', 'limit', 'fields'];
+    excludedFields.forEach(el => delete queryObj[el]);
+
+    // 2. Advanced filtering (e.g. price[gte]=100)
+    let queryStr = JSON.stringify(queryObj);
+    queryStr = queryStr.replace(/(gte|gt|lte|lt)/g, match => `$${match}`);
+    let query = Product.find(JSON.parse(queryStr));
+
+    // 3. Sorting
+    if (req.query.sort) {
+      const sortBy = req.query.sort.split(',').join(' ');
+      query = query.sort(sortBy);
+    } else {
+      query = query.sort('-createdAt');
+    }
+
+    // 4. Pagination
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 10;
+    const skip = (page - 1) * limit;
+    query = query.skip(skip).limit(limit);
+
+    const products = await query;
+    res.status(200).json({ success: true, count: products.length, page, data: products });
+  } catch (err) {
+    next(err);
+  }
 });
+```
+
+---
+
+### Q4: Securing Express: CORS, Helmet, Rate Limiting & NoSQL Injection
+**Question:** How do you harden an Express API against attacks?
+
+**Answer:**
+```javascript
+const express = require('express');
+const helmet = require('helmet');
+const cors = require('cors');
+const rateLimit = require('express-rate-limit');
+const mongoSanitize = require('express-mongo-sanitize');
+
+const app = express();
+
+// 1. Helmet: Sets HTTP Security Headers (HSTS, X-Content-Type-Options, CSP)
+app.use(helmet());
+
+// 2. CORS: Restrict Allowed Origins
+app.use(cors({
+  origin: 'https://mytrustedfrontend.com',
+  credentials: true,
+}));
+
+// 3. Rate Limiting: Prevent Brute-force & DDoS
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // 100 requests per IP
+  message: 'Too many requests from this IP, please try again later.',
+});
+app.use('/api', limiter);
+
+// 4. Body Parser with limit
+app.use(express.json({ limit: '10kb' }));
+
+// 5. Data Sanitization against NoSQL query injection (strips $ and . characters)
+app.use(mongoSanitize());
+```
+
+---
+
+### Q5: Large Scale Production Express Folder Structure
+**Question:** What is the recommended production folder architecture for a scalable Express project?
+
+**Answer:**
+```
+src/
+├── config/             # Environment variables & DB connection
+│   ├── db.js
+│   └── env.js
+├── controllers/        # Request/Response orchestration logic
+│   ├── authController.js
+│   └── userController.js
+├── middlewares/        # Custom middleware (auth, rateLimit, error)
+│   ├── authMiddleware.js
+│   └── errorMiddleware.js
+├── models/             # Mongoose schemas / Database entities
+│   └── User.js
+├── routes/             # Express Router definitions
+│   ├── authRoutes.js
+│   └── userRoutes.js
+├── services/           # Reusable business logic layer
+│   └── userService.js
+├── utils/              # Helper utilities, logger, custom error classes
+│   ├── appError.js
+│   └── logger.js
+├── app.js              # Express app setup & middleware pipeline
+└── server.js           # Server listen & process lifecycle events
 ```

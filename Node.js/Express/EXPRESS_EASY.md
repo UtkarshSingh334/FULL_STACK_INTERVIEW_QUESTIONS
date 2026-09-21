@@ -1,70 +1,64 @@
-# 🟢 Node.js & Express - Easy Questions
+# 🟢 Express.js - Easy & Routing Fundamentals
 
-> **Topics Covered:** What is Node.js, V8 Engine & Libuv, Single-Threaded Non-Blocking Architecture, Node Modules (CommonJS vs ESM), What is Express.js, Basic Express Routing, `req.params` vs `req.query` vs `req.body`, HTTP Status Codes.
-
----
-
-### Q1: What is Node.js and How Does It Work?
-**Question:** What is Node.js? Why is it described as single-threaded and non-blocking?
-
-**Answer:**
-- **Node.js** is an open-source, cross-platform JavaScript runtime environment built on Chrome's **V8 JavaScript Engine**.
-- **Architecture:**
-  1. **Single-Threaded Event Loop**: Handles all client requests on a single main thread without allocating a new operating system thread per connection.
-  2. **Non-Blocking Asynchronous I/O**: Offloads heavy I/O operations (file system, database queries, network requests) to **Libuv's C++ Threadpool** in the background.
-  3. **High Concurrency**: Can handle tens of thousands of concurrent I/O-bound connections with minimal RAM overhead.
+> **Topics Covered:** What is Express.js & Why use it with Node?, Middleware Definition & `next()`, `app.use()` vs `app.get()`, Route Parameters vs Query Parameters vs Body, HTTP Methods (GET, POST, PUT, PATCH, DELETE), HTTP Status Codes (200, 201, 400, 401, 403, 404, 500).
 
 ---
 
-### Q2: CommonJS (`require`) vs ES Modules (`import`)
-**Question:** Compare CommonJS and ES Modules in Node.js.
+### Q1: What is Express.js and Why Use It with Node.js?
+**Question:** What is Express.js? What problems does it solve over raw Node.js `http` module?
 
 **Answer:**
-| Feature | CommonJS (CJS) | ES Modules (ESM) |
-| :--- | :--- | :--- |
-| **Syntax** | `const fs = require('fs');` <br> `module.exports = { ... };` | `import fs from 'fs';` <br> `export default { ... };` |
-| **Loading Model** | Synchronous loading at runtime | Asynchronous parsing and tree-shaking at compile time |
-| **Top-Level `await`**| Not supported natively | Fully supported |
-| **Node.js Default**| Default for standard `.js` | Enabled with `"type": "module"` in `package.json` or `.mjs` extension |
+- **Express.js** is a fast, minimalist, unopinionated web application framework for Node.js.
+- **Why use Express over raw `http` module?**:
+  - Raw Node.js requires manual URL parsing, regex for routing, manual chunk concatenation for request bodies, and complex header management.
+  - Express provides built-in routing, robust middleware pipeline, parameter extraction (`req.params`, `req.query`), JSON serialization (`res.json()`), and cookie/session handling.
 
 ---
 
-### Q3: What is Express.js and Basic Routing?
-**Question:** What is Express.js? Create a basic Express HTTP server with GET and POST routes.
+### Q2: What is Middleware and What Does `next()` Do?
+**Question:** What is middleware in Express? Explain the role of the `next()` function.
 
 **Answer:**
-- **Express.js** is a fast, unopinionated, minimalist web framework for Node.js providing routing, middleware integration, and HTTP utility methods.
-
-```javascript
-const express = require('express');
-const app = express();
-
-// Built-in middleware to parse JSON bodies
-app.use(express.json());
-
-// GET Route
-app.get('/api/users', (req, res) => {
-  res.status(200).json([{ id: 1, name: 'Utkarsh Singh' }]);
-});
-
-// POST Route
-app.post('/api/users', (req, res) => {
-  const newUser = req.body;
-  res.status(201).json({ message: 'User created', data: newUser });
-});
-
-app.listen(3000, () => console.log('Server running on port 3000'));
-```
+- **Middleware**: A function that has access to the Request object (`req`), Response object (`res`), and the `next` function in the application's request-response cycle.
+- **Role of `next()`**: Passes control to the **next middleware function in the stack**. If `next()` is not called (and `res.send()` is not returned), the request will hang indefinitely. If an argument is passed `next(err)`, Express immediately skips to the error-handling middleware.
 
 ---
 
-### Q4: `req.params` vs `req.query` vs `req.body`
-**Question:** What is the difference between `req.params`, `req.query`, and `req.body` in Express?
+### Q3: `app.use()` vs `app.get()`
+**Question:** What is the difference between `app.use()` and `app.get()`?
 
 **Answer:**
-1. **`req.params` (Route Parameters)**:
-   Named URL path segments defined with `:` (e.g., `/users/:id` $ightarrow$ `/users/42` $ightarrow$ `req.params.id === "42"`).
-2. **`req.query` (Query Parameters)**:
-   Key-value pairs appended after `?` in the URL (e.g., `/users?role=admin&page=2` $ightarrow$ `req.query === { role: 'admin', page: '2' }`).
-3. **`req.body` (Request Body Payload)**:
-   Data sent in the HTTP POST/PUT/PATCH request body (parsed by `express.json()`).
+- **`app.use(path, middleware)`**: Matches **ALL HTTP methods** (GET, POST, PUT, DELETE) that start with the specified path prefix (or all routes if path omitted).
+- **`app.get(path, handler)`**: Matches **ONLY HTTP GET requests** with an exact path match.
+
+---
+
+### Q4: HTTP Methods: PUT vs PATCH & DELETE vs GET
+**Question:** Compare PUT vs PATCH and DELETE vs GET.
+
+**Answer:**
+- **`PUT`**: Replaces the **entire resource** with the new payload (Idempotent).
+- **`PATCH`**: Applies **partial updates** to specific fields of a resource (Non-idempotent in theory, but typically idempotent).
+- **`DELETE`**: Deletes a specific resource.
+- **`GET`**: Retrieves data without modifying server state (Safe and Idempotent).
+
+---
+
+### Q5: HTTP Status Codes Overview
+**Question:** Explain the most common HTTP status codes tested in interviews.
+
+**Answer:**
+- **2xx (Success)**:
+  - `200 OK`: Standard successful request.
+  - `201 Created`: Resource successfully created (POST/PUT).
+  - `204 No Content`: Successful request with no body returned (DELETE).
+- **4xx (Client Errors)**:
+  - `400 Bad Request`: Malformed syntax or invalid request body.
+  - `401 Unauthorized`: Authentication missing or invalid (Not logged in).
+  - `403 Forbidden`: Authenticated, but user lacks permission (Logged in, but no access).
+  - `404 Not Found`: Resource does not exist.
+  - `429 Too Many Requests`: Rate limit exceeded.
+- **5xx (Server Errors)**:
+  - `500 Internal Server Error`: Unexpected server crash/exception.
+  - `502 Bad Gateway`: Upstream server/proxy failure.
+  - `503 Service Unavailable`: Server overloaded or down for maintenance.

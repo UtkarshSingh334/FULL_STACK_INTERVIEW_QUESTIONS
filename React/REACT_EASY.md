@@ -1,131 +1,125 @@
-# ⚛️ React - Easy Questions
+# ⚛️ React - Easy & Core Fundamentals
 
-> **Topics Covered:** What is React, Virtual DOM & Reconciliation, JSX & Babel Compilation, Functional vs Class Components, Props vs State, One-Way Data Binding, Rules of Hooks, `useState` Hook & Functional State Updates, Lists & Keys (Why index as key is anti-pattern), Conditional Rendering.
-
----
-
-### Q1: What is React and Why Do We Use It?
-**Question:** What is React? What are its primary advantages?
-
-**Answer:**
-- **React** is an open-source, component-based JavaScript library for building interactive user interfaces, maintained by Meta.
-- **Key Advantages:**
-  1. **Component-Based Architecture**: Build encapsulated, reusable UI building blocks.
-  2. **Virtual DOM**: Minimizes direct, expensive Real DOM manipulations through efficient batch diffing.
-  3. **Declarative UI**: You declare *what* the UI should look like for a given state; React handles rendering.
-  4. **Unidirectional (One-Way) Data Flow**: State flows predictably down from parent to child components via props.
-  5. **Rich Ecosystem**: Massive community, hooks, SSR frameworks (Next.js), and mobile development (React Native).
+> **Topics Covered:** What is React & Why is it a Library?, JSX Compilation, Virtual DOM vs Real DOM, Reconciliation, Component Lifecycle (Mounting, Updating, Unmounting), What Causes Re-Renders, Props vs State, Props Immutability, Prop Drilling & Composition, Keys & Array Index as Key Anti-Pattern, Controlled vs Uncontrolled Components.
 
 ---
 
-### Q2: Virtual DOM and Reconciliation ⭐
-**Question:** What is the Virtual DOM and how does React update the Real DOM?
+### Q1: What is React and Why is it Called a Library, Not a Framework?
+**Question:** What is React? Why is it classified as a library rather than a full-fledged framework like Angular?
 
 **Answer:**
-- The **Virtual DOM (VDOM)** is an in-memory lightweight JavaScript representation of the actual Real DOM tree (`React.createElement` objects).
-- **The Reconciliation Process (Diffing Algorithm):**
-  1. Whenever component state or props change, React creates a new Virtual DOM tree.
-  2. **Diffing**: React compares the new VDOM with the previous VDOM snapshot using a fast $O(n)$ heuristic algorithm.
-  3. **Batch Update (Commit)**: React calculates the minimum necessary Real DOM mutations (patch) and updates only those specific nodes in the Real DOM.
+- **React** is an open-source, component-driven JavaScript library for building user interfaces, maintained by Meta.
+- **Library vs Framework:**
+  - **Framework (e.g. Angular, Django)**: Opinionated "all-in-one" solution that dictates project structure, routing, HTTP fetching, state management, and build tools. "The framework calls your code."
+  - **Library (React)**: Unopinionated UI layer. Focuses strictly on rendering the view layer ($V$ in MVC). You have the flexibility to choose your own libraries for routing (React Router), state (Redux/Zustand), and data fetching (React Query/Axios). "Your code calls the library."
 
 ---
 
-### Q3: What is JSX?
-**Question:** What is JSX? Can browsers read JSX directly?
+### Q2: What is JSX and How Does It Get Converted into JavaScript?
+**Question:** What is JSX? How does the browser execute JSX?
 
 **Answer:**
-- **JSX (JavaScript XML)** is a syntax extension for JavaScript that allows you to write HTML-like markup inside JavaScript files.
-- **Browsers cannot read JSX directly**: Build tools (like Babel or SWC) compile JSX into standard `React.createElement()` or `_jsx()` function calls before execution.
+- **JSX (JavaScript XML)** is a syntax extension that lets you write HTML-like markup directly inside JavaScript files.
+- **Transpilation Flow:** Browsers do not understand JSX. During the build process, compilers like **Babel** or **SWC** transpile JSX tags into `React.createElement()` or `_jsx()` function calls which evaluate to plain JavaScript objects (Virtual DOM nodes).
 
 ```jsx
-// JSX Code:
-const element = <h1 className="title">Hello, React!</h1>;
+// JSX Source:
+const element = <button className="btn" onClick={handleClick}>Click Me</button>;
 
-// Compiled JavaScript (Babel):
-const element = React.createElement("h1", { className: "title" }, "Hello, React!");
+// Transpiled JavaScript (Babel):
+const element = React.createElement(
+  "button",
+  { className: "btn", onClick: handleClick },
+  "Click Me"
+);
 ```
 
 ---
 
-### Q4: Functional Components vs Class Components
-**Question:** Compare Functional Components and Class Components in React.
+### Q3: Virtual DOM vs Real DOM & Reconciliation
+**Question:** What is the Virtual DOM? How does it differ from the Real DOM, and what is Reconciliation?
 
 **Answer:**
-| Feature | Functional Components (Modern) | Class Components (Legacy) |
-| :--- | :--- | :--- |
-| **Syntax** | Plain JavaScript function | ES6 Class extending `React.Component` |
-| **State Management** | React Hooks (`useState`, `useReducer`) | `this.state` and `this.setState()` |
-| **Lifecycle** | `useEffect` Hook | `componentDidMount`, `componentDidUpdate`, `componentWillUnmount` |
-| **`this` Keyword** | No `this` issues | Requires manual method binding (`this.handleClick.bind(this)`) |
-| **Boilerplate** | Lightweight and concise | Verbose boilerplate code |
+- **Real DOM**: The browser's native tree representation of the UI. Updating Real DOM nodes is computationally expensive because changes trigger browser layout recalculations (Reflow) and Repaints.
+- **Virtual DOM (VDOM)**: A lightweight, in-memory JavaScript object representation of the Real DOM.
+- **Reconciliation (The Diffing Algorithm)**:
+  1. When state or props change, React creates a new VDOM tree.
+  2. React compares the new VDOM with the previous VDOM snapshot using an optimized $O(n)$ heuristic algorithm.
+  3. React computes the exact minimal set of changes (patches) and batches them into the Real DOM in a single update.
 
 ---
 
-### Q5: Props vs State
-**Question:** What is the difference between Props and State?
+### Q4: What Causes a React Component to Re-render?
+**Question:** What are all the triggers that cause a React component to re-render?
 
 **Answer:**
-| Criteria | Props (Properties) | State |
-| :--- | :--- | :--- |
-| **Definition** | Data passed into a component from its parent | Internal data managed within the component |
-| **Mutability** | **Immutable** (Read-only for child component) | **Mutable** (Updated via `setState` / `useState`) |
-| **Ownership** | Owned and controlled by parent component | Owned and private to the local component |
-| **Re-render** | Changes in props trigger child re-render | Calling updater function triggers re-render |
+A component re-renders when:
+1. **State Changes**: Calling `setState()` / `useState` setter with a new reference.
+2. **Props Change**: Parent passes new or changed prop values.
+3. **Parent Re-renders**: By default, when a parent component re-renders, all its child components re-render recursively (unless memoized via `React.memo`).
+4. **Context Value Changes**: Any component consuming a Context via `useContext` re-renders when the Provider's `value` updates.
+5. **Hooks Trigger**: Custom hooks or internal hooks dispatching state updates.
 
 ---
 
-### Q6: `useState` Hook & Functional State Updates
-**Question:** How does `useState` work? Why should you pass a callback function to `setState` when updating based on previous state?
+### Q5: Component Lifecycle Phases: Mounting, Updating, Unmounting
+**Question:** What are the three phases of a React component lifecycle? How do functional hooks map to them?
 
 **Answer:**
-- `useState` declares a state variable and a setter function.
-- **Batching & Stale Closures:** React batches state updates for performance. If you update state multiple times based on the previous value, direct updates will read stale state. Passing an updater function guarantees access to the latest committed state.
+1. **Mounting**: Component instance is created and inserted into the DOM.
+   - *Class:* `componentDidMount()`
+   - *Hook:* `useEffect(() => { ... }, [])`
+2. **Updating**: Triggered by state or prop changes.
+   - *Class:* `componentDidUpdate(prevProps, prevState)`
+   - *Hook:* `useEffect(() => { ... }, [dependencies])`
+3. **Unmounting**: Component is removed from the DOM.
+   - *Class:* `componentWillUnmount()`
+   - *Hook:* `useEffect(() => { return () => { /* cleanup */ }; }, [])`
+
+---
+
+### Q6: Why are Props Immutable in React?
+**Question:** Why are props read-only? What happens if you try to modify `props.title = "New"`?
+
+**Answer:**
+- **Pure Function Principle**: React requires components to act like pure functions with respect to their props.
+- **Predictable Data Flow**: If child components mutated parent props directly, child components would unpredictably alter state across sibling components, creating untraceable bugs and breaking unidirectional data flow.
+- Modifying props directly causes unexpected state corruption and throws errors in strict mode.
+
+---
+
+### Q7: Prop Drilling vs Component Composition
+**Question:** What is Prop Drilling and how does Component Composition solve it without Context API?
+
+**Answer:**
+- **Prop Drilling**: Passing data through multiple intermediary components that do not need the data, solely to reach a deeply nested child.
+- **Component Composition Solution**: Pass the child component itself as a prop (`children`) so the parent directly injects the required data.
 
 ```jsx
-import { useState } from 'react';
-
-function Counter() {
-  const [count, setCount] = useState(0);
-
-  const handleTripleIncrement = () => {
-    // ❌ Incorrect (Batched: count remains 0 + 1 = 1)
-    // setCount(count + 1);
-    // setCount(count + 1);
-    // setCount(count + 1);
-
-    // ✅ Correct: Functional updates receive the latest pending state
-    setCount(prev => prev + 1);
-    setCount(prev => prev + 1);
-    setCount(prev => prev + 1); // count becomes 3
-  };
-
-  return <button onClick={handleTripleIncrement}>Count: {count}</button>;
+// Instead of Prop Drilling user to Layout -> Sidebar -> Profile:
+function App() {
+  const user = { name: "Utkarsh" };
+  return (
+    <Layout sidebar={<Profile user={user} />}>
+      <MainContent />
+    </Layout>
+  );
 }
 ```
 
 ---
 
-### Q7: Lists & Keys: Why is Array Index as Key an Anti-Pattern?
-**Question:** Why does React require a `key` prop when rendering lists? Why should you avoid using array indices as keys?
+### Q8: Keys in React: Why is Array Index Dangerous as a Key?
+**Question:** Why does React require a `key` prop on list items? Why should you avoid `key={index}`?
 
 **Answer:**
-- **Purpose of `key`**: Keys help React identify which items have changed, been added, or been removed during reconciliation.
-- **Why array index is dangerous:**
-  If the list is re-ordered, filtered, or items are inserted at the beginning/middle, array indices change for existing items. React will wrongly match old component instances to new data, leading to **state corruption in child inputs, animation glitches, and UI bugs**.
+- **Role of Keys**: Keys provide a stable identity across renders so React's diffing algorithm knows whether an item was added, removed, or reordered.
+- **Why Index Key Fails**: If you delete or insert items at the beginning/middle of a list, the indices of existing items shift. React will mistakenly associate old state (e.g. checkbox selections, input text) with newly positioned items, causing serious UI corruption.
 
 ```jsx
-// ❌ Bad: Index as key
-{users.map((user, index) => <UserCard key={index} user={user} />)}
+// ❌ Bad:
+{items.map((item, index) => <TodoItem key={index} todo={item} />)}
 
-// ✅ Good: Stable, unique identifier as key
-{users.map(user => <UserCard key={user.id} user={user} />)}
+// ✅ Correct:
+{items.map(item => <TodoItem key={item.id} todo={item} />)}
 ```
-
----
-
-### Q8: Rules of Hooks
-**Question:** What are the two fundamental Rules of Hooks in React?
-
-**Answer:**
-1. **Only Call Hooks at the Top Level**: Do not call hooks inside loops, conditions, or nested functions. This ensures hooks execute in the exact same order on every render.
-2. **Only Call Hooks from React Function Components or Custom Hooks**: Never call hooks from standard JavaScript functions or class components.

@@ -1,118 +1,84 @@
-# 🍃 MongoDB - Medium Questions
+# 🍃 MongoDB - Medium & Aggregation Pipeline
 
-> **Topics Covered:** Complete Guide to MongoDB Indexing (All 9 Types) ⭐⭐⭐, Index Options (`unique`, `sparse`, `partialFilterExpression`, TTL), Aggregation Pipeline (`$match`, `$group`, `$project`, `$lookup`, `$unwind`), Mongoose ODM (`populate`, Schemas, Hooks), Embedded Documents vs References.
-
----
-
-### Q1: Types of Indexing in MongoDB ⭐⭐⭐
-**Question:** Explain all 9 types of Indexes in MongoDB and their options. How do you measure query execution performance?
-
-**Answer:**
-Indexes in MongoDB improve query execution speed by creating ordered B-Tree data structures, avoiding costly full collection scans (`COLLSCAN`).
-
-#### 9 Index Types:
-1. **Default `_id` Index**: Automatically created unique index on the primary `_id` field.
-2. **Single Field Index**: User-defined index on a single document key:
-   ```javascript
-   db.users.createIndex({ email: 1 }); // 1 = Ascending, -1 = Descending
-   ```
-3. **Compound Index**: Index on multiple fields (order of fields matters - follows Left-Prefix rule):
-   ```javascript
-   db.users.createIndex({ status: 1, age: -1 });
-   ```
-4. **Multikey Index**: Created automatically when an indexed field contains an **array** value (indexes each array element).
-5. **Text Index**: Enables full-text search across string fields with word stemming and stop-words:
-   ```javascript
-   db.articles.createIndex({ title: "text", content: "text" });
-   db.articles.find({ $text: { $search: "fullstack javascript" } });
-   ```
-6. **Geospatial Index (`2dsphere` / `2d`)**: Calculates distances on sphere/flat surface for coordinate queries (`$near`, `$geoWithin`).
-7. **Hashed Index**: Hashes field value; used for even partition distribution across shards in MongoDB Sharding.
-8. **Wildcard Index**: Indexes all arbitrary or unknown nested dynamic sub-fields (`db.products.createIndex({ "attributes.$**": 1 })`).
-9. **Clustered Index**: Stores collection documents directly ordered by clustered index key.
-
-#### Important Index Options:
-- **`unique: true`**: Rejects duplicate entries (`db.users.createIndex({ email: 1 }, { unique: true })`).
-- **`sparse: true`**: Only indexes documents that contain the indexed field.
-- **`expireAfterSeconds` (TTL Index)**: Automatically deletes documents after a duration (ideal for OTPs and sessions).
-- **`partialFilterExpression`**: Indexes only documents matching a specific filter condition.
-
-#### Performance Analysis with `explain()`:
-```javascript
-db.users.find({ email: "test@test.com" }).explain("executionStats");
-// Look for stage: "IXSCAN" (Index Scan - Fast) vs "COLLSCAN" (Collection Scan - Slow)
-```
+> **Topics Covered:** Types of MongoDB Indexes (Single-Field, Compound, Multikey, Text, Unique, Sparse, TTL), The Aggregation Pipeline (`$match`, `$group`, `$project`, `$lookup`, `$unwind`), `find()` vs Aggregation, Mongoose `populate()` vs `$lookup`, MongoDB ACID Transactions, Replica Sets & Sharding, Query Optimization with `explain()`.
 
 ---
 
-### Q2: Aggregation Pipeline Deep Dive
-**Question:** Explain the MongoDB Aggregation Pipeline with an example of `$match`, `$group`, `$project`, `$sort`, and `$lookup`.
+### Q1: The 7 Core Index Types in MongoDB ⭐⭐⭐
+**Question:** Explain the most common MongoDB index types and options.
 
 **Answer:**
-The Aggregation Framework processes documents through a multi-stage pipeline:
+1. **Single-Field Index**: Indexes a single field (`db.users.createIndex({ email: 1 })`).
+2. **Compound Index**: Indexes multiple fields. Field order is critical (Follows Left-Prefix rule).
+3. **Multikey Index**: Created automatically when indexing an array field (indexes every element).
+4. **Text Index**: Provides full-text word search capabilities across string content.
+5. **TTL (Time-To-Live) Index**: Automatically removes documents after a set time threshold (great for OTPs and sessions):
+   ```javascript
+   db.sessions.createIndex({ createdAt: 1 }, { expireAfterSeconds: 3600 });
+   ```
+6. **Unique Index**: Enforces uniqueness on the indexed field:
+   ```javascript
+   db.users.createIndex({ email: 1 }, { unique: true });
+   ```
+7. **Sparse Index**: Only indexes documents that contain the indexed field, saving storage.
+
+---
+
+### Q2: Aggregation Pipeline Stages (`$match`, `$group`, `$project`, `$lookup`, `$unwind`) ⭐⭐⭐
+**Question:** Explain the 5 core stages of the MongoDB Aggregation Pipeline with code examples.
+
+**Answer:**
+1. **`$match`**: Filters documents to pass only matching documents to the next stage.
+2. **`$group`**: Groups input documents by a specified `_id` key and applies accumulators (`$sum`, `$avg`, `$min`, `$max`).
+3. **`$project`**: Reshapes documents (includes/excludes fields or computes new computed fields).
+4. **`$lookup`**: Performs a Left Outer Join with another collection in the same database.
+5. **`$unwind`**: Deconstructs an array field from input documents to output a document for each element.
 
 ```javascript
 db.orders.aggregate([
-  // Stage 1: Filter completed orders in 2026
-  { $match: { status: "completed", year: 2026 } },
-
-  // Stage 2: Join with users collection (Left Outer Join)
+  { $match: { status: "Delivered" } },
   {
     $lookup: {
       from: "users",
       localField: "userId",
       foreignField: "_id",
-      as: "customerDetails"
+      as: "user"
     }
   },
-
-  // Stage 3: Unwind joined array
-  { $unwind: "$customerDetails" },
-
-  // Stage 4: Group by customer and compute total spend
+  { $unwind: "$user" },
   {
     $group: {
-      _id: "$userId",
-      customerName: { $first: "$customerDetails.name" },
-      totalSpent: { $sum: "$totalAmount" },
+      _id: "$user.city",
+      totalRevenue: { $sum: "$totalAmount" },
       orderCount: { $sum: 1 }
     }
   },
-
-  // Stage 5: Sort by highest spenders
-  { $sort: { totalSpent: -1 } },
-
-  // Stage 6: Project final output fields
-  {
-    $project: {
-      _id: 0,
-      userId: "$_id",
-      customerName: 1,
-      totalSpent: 1,
-      orderCount: 1
-    }
-  }
+  { $sort: { totalRevenue: -1 } }
 ]);
 ```
 
 ---
 
-### Q3: Mongoose `populate()` vs Embedded Documents
-**Question:** When should you embed subdocuments versus reference documents with Mongoose `populate()`?
+### Q3: `find()` vs Aggregation & Mongoose `populate()` vs `$lookup`
+**Question:** When should you use `find()` vs `aggregate()`? Compare Mongoose `populate()` with MongoDB `$lookup`.
 
 **Answer:**
-- **Embedding (Denormalization)**:
-  - *When to use:* 1-to-1 or 1-to-Few relationships where child data is always retrieved together with the parent (e.g., User addresses, Order line items).
-  - *Advantage:* Fast single-document reads without joining.
-- **Referencing (Normalization with `populate`)**:
-  - *When to use:* 1-to-Many or Many-to-Many relationships where child documents grow unboundedly or are queried independently (e.g., Users $\leftrightarrow$ Posts $\leftrightarrow$ Comments).
+- **`find()` vs `aggregate()`**:
+  - `find()` is for simple filtering, pagination, and projection on a single collection.
+  - `aggregate()` is for multi-stage data transformation, grouped calculations, joins, and analytical reporting.
+- **`populate()` vs `$lookup()`**:
+  - **`populate()`**: Performed at the **Application/Node.js level** by Mongoose by firing secondary queries behind the scenes.
+  - **`$lookup()`**: Executed natively **inside the MongoDB Database Engine** in a single optimized database operation.
 
-```javascript
-// Mongoose Populate Example
-const PostSchema = new mongoose.Schema({
-  title: String,
-  author: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
-});
+---
 
-const post = await Post.findById(postId).populate('author', 'name email');
-```
+### Q4: How Do You Optimize a Slow MongoDB Query?
+**Question:** How do you profile and optimize slow queries using `explain()`?
+
+**Answer:**
+1. Append `.explain("executionStats")` to your query.
+2. Check `winningPlan.stage`:
+   - `COLLSCAN` (Collection Scan): **Bad**. Scanned every document in the collection.
+   - `IXSCAN` (Index Scan): **Good**. Used a B-Tree index.
+3. Compare `totalDocsExamined` vs `nReturned`. If `totalDocsExamined` $\gg$ `nReturned`, an index is missing or suboptimal.
+4. Create compound indexes matching the **ESR Rule** (Equality $ightarrow$ Sort $ightarrow$ Range).
