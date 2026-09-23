@@ -18,7 +18,7 @@
 
 | Domain | 🟢 Easy / Core | 🟡 Medium / Applied | 🔴 Hard / Advanced | 💻 Machine Coding / Queries |
 | :--- | :--- | :--- | :--- | :--- |
-| **📜 JavaScript** | [JS Easy](./JavaScript/JAVASCRIPT_EASY.md) | [JS Medium](./JavaScript/JAVASCRIPT_MEDIUM.md) | [JS Hard](./JavaScript/JAVASCRIPT_HARD.md) | [JS Polyfills & Coding](./JavaScript/JAVASCRIPT_CODING.md) |
+| **📜 JavaScript** | [JS Easy](./JavaScript/JAVASCRIPT_EASY.md) | [JS Medium](./JavaScript/JAVASCRIPT_MEDIUM.md) | [JS Hard](./JavaScript/JAVASCRIPT_HARD.md) | [24-Topic Master Guide](./JavaScript/JAVASCRIPT_MASTER.md) • [Polyfills](./JavaScript/JAVASCRIPT_CODING.md) |
 | **⚛️ React** | [React Easy](./React/REACT_EASY.md) | [React Medium](./React/REACT_MEDIUM.md) | [React Hard](./React/REACT_HARD.md) | [Hooks & Redux Flow](./React/REACT_MEDIUM.md) |
 | **📱 React Native** | [RN Easy](./ReactNative/REACT_NATIVE_EASY.md) | [RN Medium](./ReactNative/REACT_NATIVE_MEDIUM.md) | [RN Hard](./ReactNative/REACT_NATIVE_HARD.md) | [Virtualization & JSI](./ReactNative/REACT_NATIVE_HARD.md) |
 | **🟢 Node.js** | [Node Core Architecture](./Node.js/NODE_CORE.md) | [Event Loop & Streams](./Node.js/NODE_CORE.md) | [Cluster & Workers](./Node.js/NODE_CORE.md) | [Streams Compression](./Node.js/NODE_CORE.md) |
@@ -71,7 +71,9 @@
 - [ ] `call()`, `apply()`, `bind()` & Function Borrowing
 - [ ] `this` keyword rules & Arrow Function Lexical `this`
 - [ ] Shallow Copy vs Deep Copy (`structuredClone`)
-- [ ] Event Loop: Call Stack $ightarrow$ Microtasks (`Promises`, `nextTick`) $ightarrow$ Macrotasks (`setTimeout`)
+- [ ] Event Loop: Call Stack $
+ightarrow$ Microtasks (`Promises`, `nextTick`) $
+ightarrow$ Macrotasks (`setTimeout`)
 - [ ] Promise Combinators: `all`, `allSettled`, `race`, `any`
 - [ ] Debouncing vs Throttling
 
