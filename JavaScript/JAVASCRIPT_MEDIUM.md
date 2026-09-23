@@ -1,211 +1,385 @@
-# 📜 JavaScript - Medium & Advanced Concepts
+# 📜 JavaScript - Medium & Applied Concepts
 
-> **Topics Covered:** Lexical Scope vs Dynamic Scope, Scope Chain, IIFE, Execution Context & Call Stack, Closures, Currying vs Partial Application, `this` Binding (`call`, `apply`, `bind`, Arrow Functions), Function Borrowing, Shallow vs Deep Copy, Array Grouping, Sorting, and Flattening, Promises & Combinators, Async/Await Internals, Sequential vs Concurrent Promise Execution.
-
----
-
-### Q1: Execution Context & The Call Stack ⭐⭐⭐
-**Question:** What is an Execution Context in JavaScript? What happens when a function is called?
-
-**Answer:**
-An **Execution Context** is an environment in which JavaScript code is evaluated and executed.
-
-#### 2 Types of Execution Context:
-1. **Global Execution Context (GEC)**: Created once on startup. Creates `window`/`global` and `this`.
-2. **Function Execution Context (FEC)**: Created every time a function is invoked.
-
-#### 2 Phases in Every Execution Context:
-1. **Creation (Memory Allocation) Phase**:
-   - Variables (`var`) allocated memory and set to `undefined`.
-   - `let`/`const` placed in TDZ.
-   - Function declarations stored completely in memory.
-   - Sets up Scope Chain and `this`.
-2. **Execution Phase**:
-   - Code runs line-by-line; variables assigned values, functions invoked.
-
-**The Call Stack**: LIFO (Last-In-First-Out) stack structure that manages execution contexts. When a function finishes executing, its context is popped off the stack.
+> **Topics Covered:** Promises (States, Creation, Chaining, Error Handling, Nesting, Promise vs Callback vs Async/Await), Promise Static Methods (`Promise.all`, `allSettled`, `race`, `any`, `resolve`, `reject` + Comparison Matrix), Async/Await (Execution, Try/Catch, Sequential vs Parallel), Scope Chain & Lexical vs Dynamic Scope, Closures Deep Dive, Callbacks & Callback Hell, Event Propagation (Capturing, Target, Bubbling), Event Bubbling & `stopPropagation()`, Event Capturing, Event Delegation, `this` Binding & Function Borrowing (`call`, `apply`, `bind`), Function Currying & Partial Application, Higher-Order Functions, Array `reduce()` Deep Dive & Comparison Table, Shallow Copy vs Deep Copy.
 
 ---
 
-### Q2: Lexical Scope vs Dynamic Scope & The Scope Chain
-**Question:** What is Lexical Scope? How does it differ from Dynamic Scope? Explain the Scope Chain.
+## 1. What is a Promise and What are its 3 States?
 
-**Answer:**
-- **Lexical Scope (Static Scope)**: Scope resolution depends entirely on **where functions and variables are written in the source code at compile time**, NOT where they are called from. JavaScript uses Lexical Scope.
-- **Dynamic Scope**: Scope resolution depends on **where the function is called at runtime** (e.g., Bash, older Perl).
-- **Scope Chain**: When a variable is referenced, JS searches current local scope $ightarrow$ outer lexical parent scope $ightarrow$ global scope.
+### Answer
+A **Promise** is an object representing the eventual completion or failure of an asynchronous operation.
+- **3 States:**
+  1. **Pending**: Initial state, operation is ongoing.
+  2. **Fulfilled (Resolved)**: Operation completed successfully (`resolve(value)`).
+  3. **Rejected**: Operation failed (`reject(error)`).
 
-```javascript
-const x = 10;
-function foo() {
-  console.log(x); // Lexical: looks at definition site, finds global x = 10
+### Example
+```js
+const promise = new Promise((resolve, reject) => {
+    const success = true;
+    if (success) resolve("Operation Successful");
+    else reject("Operation Failed");
+});
+
+promise
+    .then(data => console.log(data))
+    .catch(err => console.error(err));
+```
+
+### Output
+```
+Operation Successful
+```
+
+---
+
+## 2. Promise Chaining & Error Handling (.then, .catch, .finally)
+
+### Answer
+- **Promise Chaining**: Returning a value or another Promise from a `.then()` handler to execute asynchronous tasks in sequence.
+- **`.catch()`**: Catches errors from any step in the preceding chain.
+- **`.finally()`**: Executes cleanup logic after settlement regardless of success or failure.
+
+### Example
+```js
+function calculate(num) {
+    return Promise.resolve(num)
+        .then(n => n * 2)
+        .then(n => n + 5)
+        .then(n => console.log("Final Result:", n))
+        .catch(err => console.error("Error in chain:", err))
+        .finally(() => console.log("Chain complete."));
 }
-function bar() {
-  const x = 20;
-  foo(); // In dynamic scoping, this would output 20. In JS (lexical), outputs 10!
+
+calculate(10);
+```
+
+### Output
+```
+Final Result: 25
+Chain complete.
+```
+
+---
+
+## 3. Promise Static Methods: all, allSettled, race, any, resolve, reject
+
+### Answer
+| Method | Resolves When | Rejects When | Return Value on Success |
+| :--- | :--- | :--- | :--- |
+| **`Promise.all`** | **ALL** promises resolve | **ANY** promise rejects (Fail-Fast) | Array of all resolved values `[v1, v2]` |
+| **`Promise.allSettled`**| **ALL** promises settle | Never rejects | Array of status objects `[{status, value/reason}]` |
+| **`Promise.race`** | **FIRST** promise settles (resolve/reject) | **FIRST** promise rejects | Value/Reason of the fastest settled promise |
+| **`Promise.any`** | **FIRST** promise **fulfills** | **ALL** promises reject | Value of the fastest fulfilled promise (or `AggregateError`) |
+
+### Example
+```js
+const p1 = Promise.resolve("A");
+const p2 = Promise.reject("B Failed");
+const p3 = Promise.resolve("C");
+
+// Promise.allSettled waits for all regardless of errors:
+Promise.allSettled([p1, p2, p3])
+    .then(results => console.log(results));
+```
+
+### Output
+```js
+[
+  { status: 'fulfilled', value: 'A' },
+  { status: 'rejected', reason: 'B Failed' },
+  { status: 'fulfilled', value: 'C' }
+]
+```
+
+---
+
+## 4. Async / Await: How It Works & Error Handling (try/catch)
+
+### Answer
+- **`async`**: Declares an asynchronous function. Always returns a Promise.
+- **`await`**: Pauses function execution until the awaited Promise settles.
+- **Error Handling**: Wrapped in synchronous-looking `try...catch` blocks.
+
+### Example
+```js
+async function fetchUserData(userId) {
+    try {
+        if (!userId) throw new Error("User ID is required");
+        const response = await fetch(`https://jsonplaceholder.typicode.com/users/${userId}`);
+        const user = await response.json();
+        return user.name;
+    } catch (error) {
+        console.error("Caught in try/catch:", error.message);
+    } finally {
+        console.log("Fetch attempt finished.");
+    }
 }
-bar(); // Outputs: 10
+
+fetchUserData(1).then(name => console.log("User:", name));
 ```
 
 ---
 
-### Q3: What is an IIFE (Immediately Invoked Function Expression)?
-**Question:** What is an IIFE and why was it heavily used before ES6?
+## 5. Sequential vs Parallel Execution with async/await
 
-**Answer:**
-An **IIFE** is a function that runs immediately upon definition: `(function() { ... })();`.
-- **Primary Use Case:** Creating private scopes to prevent polluting the global namespace before ES6 `let`/`const` and modules existed.
+### Answer
+- **Sequential**: Awaiting promises one by one in sequence (Takes $T_1 + T_2$).
+- **Parallel**: Firing all promises simultaneously and awaiting `Promise.all()` (Takes $\max(T_1, T_2)$).
 
-```javascript
-(function() {
-  var privateKey = "12345";
-  console.log("IIFE Initialized");
-})();
-// console.log(privateKey); // ReferenceError: privateKey is not defined
+### Example
+```js
+const delay = (ms, val) => new Promise(res => setTimeout(() => res(val), ms));
+
+// Parallel Execution (Fast: max(100ms, 100ms) = 100ms)
+async function parallelRun() {
+    console.time("Parallel");
+    const [res1, res2] = await Promise.all([delay(100, "1"), delay(100, "2")]);
+    console.timeEnd("Parallel");
+    console.log("Results:", res1, res2);
+}
+parallelRun();
 ```
 
 ---
 
-### Q4: `this` Keyword, Function Borrowing & Explicit Binding (`call`, `apply`, `bind`) ⭐⭐⭐
-**Question:** How is `this` determined in JavaScript? What is function borrowing? Compare `call()`, `apply()`, and `bind()`.
+## 6. What is the Scope Chain and How Does JavaScript Find a Variable?
 
-**Answer:**
-In JavaScript, `this` is determined by **how a function is invoked** (Runtime binding), except for arrow functions (Lexical binding).
+### Answer
+The **Scope Chain** is the hierarchical lookup process JavaScript uses to resolve variable references:
+1. Searches the **Current Local Scope**.
+2. If not found, searches the **Outer Lexical Parent Scope**.
+3. Continues climbing upward until it reaches the **Global Scope**.
+4. If not found in the global scope, throws a **`ReferenceError`**.
 
-#### 4 Rules of `this`:
-1. **Default Binding**: Global `window` (or `undefined` in strict mode `'use strict'`).
-2. **Implicit Binding**: Object before the dot (`user.getProfile()` $ightarrow$ `this` is `user`).
-3. **Explicit Binding**: `call()`, `apply()`, `bind()`.
-4. **`new` Binding**: New instance object created by constructor.
-5. **Arrow Functions**: Do not have their own `this`; capture `this` lexically from parent.
+```
+Current Local Scope
+        ↓
+Outer Lexical Scope
+        ↓
+   Global Scope
+```
 
-#### Function Borrowing with `call`, `apply`, `bind`:
-```javascript
-const developer = {
-  name: "Utkarsh",
-  introduce: function(greeting, role) {
-    return `${greeting}, I am ${this.name}, a ${role}.`;
-  }
-};
+### Example
+```js
+const globalName = "Utkarsh";
 
-const designer = { name: "Sarah" };
-
-// Borrowing using call (comma-separated args):
-console.log(developer.introduce.call(designer, "Hello", "UI/UX Designer"));
-
-// Borrowing using apply (arguments array):
-console.log(developer.introduce.apply(designer, ["Hi", "Product Designer"]));
-
-// Borrowing using bind (returns new bound function):
-const boundIntro = developer.introduce.bind(designer, "Hey");
-console.log(boundIntro("Lead Designer"));
+function outer() {
+    const outerRole = "Developer";
+    function inner() {
+        const innerSkill = "JavaScript";
+        console.log(innerSkill); // Local
+        console.log(outerRole);  // Outer
+        console.log(globalName); // Global
+    }
+    inner();
+}
+outer();
 ```
 
 ---
 
-### Q5: Currying vs Partial Application
-**Question:** What is the difference between Currying and Partial Application?
+## 7. What is a Closure in JavaScript?
 
-**Answer:**
-- **Currying**: Transforms a function of $N$ arguments into $N$ chained functions, each taking **exactly 1 argument** (`f(a, b, c)` $ightarrow$ `f(a)(b)(c)`).
-- **Partial Application**: Fixes a few arguments of a function producing a new function of **lower arity** (`f(a, b, c)` $ightarrow$ `f(a)(b, c)`).
+### Answer
+A **Closure** is created when an inner function remembers and retains access to its outer function's lexical variables even after the outer function has finished executing and returned.
 
-```javascript
-// Currying:
-const curryAdd = a => b => c => a + b + c;
-console.log(curryAdd(1)(2)(3)); // 6
+### Example
+```js
+function createCounter() {
+    let count = 0; // Private encapsulated state
+    return function() {
+        return ++count;
+    };
+}
 
-// Partial Application:
-function multiply(a, b, c) { return a * b * c; }
-const partialMultiplyBy2 = multiply.bind(null, 2);
-console.log(partialMultiplyBy2(3, 4)); // 24 (2 * 3 * 4)
+const counter = createCounter();
+console.log(counter()); // 1
+console.log(counter()); // 2
+console.log(counter()); // 3
 ```
 
 ---
 
-### Q6: Shallow Copy vs Deep Copy & Deep Clone Techniques
-**Question:** How does Shallow Copy differ from Deep Copy? Compare `structuredClone`, `JSON.parse(JSON.stringify())`, and custom recursive cloning.
+## 8. What is Callback Hell and How Can It Be Avoided?
 
-**Answer:**
-- **Shallow Copy**: Duplicates the top level; nested objects share the same memory reference (`{ ...obj }`, `Object.assign()`).
-- **Deep Copy**: Clones all nested levels recursively into independent memory allocations.
+### Answer
+**Callback Hell** occurs when multiple asynchronous callbacks are nested deeply, creating unreadable and fragile pyramid code. It is avoided using **Promises** or **`async/await`**.
 
-```javascript
-const original = {
-  name: "Utkarsh",
-  skills: ["React", "Node"],
-  date: new Date(),
-  map: new Map([["key", "value"]])
-};
+### Example
+```js
+// ❌ Callback Hell
+getUser(id, (user) => {
+    getOrders(user.id, (orders) => {
+        getPayment(orders[0].id, (payment) => {
+            console.log(payment);
+        });
+    });
+});
 
-// 1. structuredClone (Modern Standard):
-const deep1 = structuredClone(original);
-
-// 2. JSON serialization (Limitations: drops functions, undefined, symbols, converts Date to string, breaks on circular references):
-const deep2 = JSON.parse(JSON.stringify(original));
+// ✅ Refactored with async/await
+async function getPaymentFlow(id) {
+    const user = await getUser(id);
+    const orders = await getOrders(user.id);
+    const payment = await getPayment(orders[0].id);
+    console.log(payment);
+}
 ```
 
 ---
 
-### Q7: Common Data Transformations: Grouping, Flattening & Deduplicating
-**Question:** How do you group objects by property, flatten nested arrays, and remove duplicates from an array of objects in modern JavaScript?
+## 9. Event Propagation: Capturing, Target, and Bubbling Phases
 
-**Answer:**
+### Answer
+When an event occurs on a DOM element, it passes through 3 phases:
+1. **Capturing Phase**: Event descends from `window` $ightarrow$ `document` $ightarrow$ ancestors down to target.
+2. **Target Phase**: Event arrives at the target element clicked.
+3. **Bubbling Phase**: Event bubbles upward from target back through ancestors up to `window`.
 
-```javascript
-// 1. Group by Property (Object.groupBy in ES2024 or reduce)
-const employees = [
-  { name: "Alice", dept: "Engineering" },
-  { name: "Bob", dept: "HR" },
-  { name: "Charlie", dept: "Engineering" }
-];
-const grouped = employees.reduce((acc, emp) => {
-  acc[emp.dept] = acc[emp.dept] || [];
-  acc[emp.dept].push(emp);
-  return acc;
+```
+Capturing Phase (Downward)  -->  Target Phase  -->  Bubbling Phase (Upward)
+```
+
+---
+
+## 10. Event Bubbling & How to Stop It with stopPropagation()
+
+### Answer
+**Event Bubbling** is the default phase where event handlers fire on the target and bubble upward to all parent ancestors. `event.stopPropagation()` halts this upward propagation.
+
+### Example
+```js
+document.getElementById("parent").addEventListener("click", () => {
+    console.log("Parent clicked");
+});
+
+document.getElementById("child").addEventListener("click", (event) => {
+    console.log("Child clicked");
+    event.stopPropagation(); // Prevents "Parent clicked" from firing!
+});
+```
+
+---
+
+## 11. Event Capturing: How to Enable It
+
+### Answer
+**Event Capturing** handlers execute during the downward journey before reaching the target. Pass `{ capture: true }` or `true` as the third parameter to `addEventListener`.
+
+### Example
+```js
+parent.addEventListener("click", () => {
+    console.log("Parent (Capturing)");
+}, true); // true enables Capturing
+```
+
+---
+
+## 12. What is Event Delegation and Why is It Useful?
+
+### Answer
+**Event Delegation** is attaching a single event listener to a parent container instead of attaching listeners to multiple child elements, using `event.target` to detect which child was clicked.
+- **Benefits**: Memory savings and automatic support for dynamically added child elements.
+
+### Example
+```js
+document.getElementById("list").addEventListener("click", (event) => {
+    if (event.target && event.target.tagName === "LI") {
+        console.log("Item Clicked:", event.target.textContent);
+    }
+});
+```
+
+---
+
+## 13. this Keyword, Function Borrowing & call() vs apply() vs bind()
+
+### Answer
+- **`call(thisArg, arg1, arg2)`**: Invokes function immediately with comma-separated arguments.
+- **`apply(thisArg, [args])`**: Invokes function immediately with arguments array.
+- **`bind(thisArg, arg1)`**: Returns a **new copy of the function** bound permanently to `thisArg`.
+
+### Example
+```js
+const user = { name: "Utkarsh" };
+
+function greet(greeting, punctuation) {
+    console.log(`${greeting}, I am ${this.name}${punctuation}`);
+}
+
+greet.call(user, "Hello", "!");        // "Hello, I am Utkarsh!"
+greet.apply(user, ["Hi", "."]);        // "Hi, I am Utkarsh."
+const bound = greet.bind(user, "Hey");
+bound("!!");                           // "Hey, I am Utkarsh!!"
+```
+
+---
+
+## 14. What is Function Currying?
+
+### Answer
+**Currying** transforms a function with multiple arguments into a sequence of nested functions, each taking a single argument ($f(a, b, c) ightarrow f(a)(b)(c)$).
+
+### Example
+```js
+// Standard Currying:
+function add(a) {
+    return function(b) {
+        return function(c) {
+            return a + b + c;
+        };
+    };
+}
+console.log(add(1)(2)(3)); // 6
+
+// Arrow Currying:
+const addCurry = a => b => c => a + b + c;
+console.log(addCurry(10)(20)(30)); // 60
+```
+
+---
+
+## 15. Array.prototype.reduce() Deep Dive
+
+### Answer
+`reduce(callback, initialValue)` executes a reducer function across each element, returning a single accumulated value.
+- **Parameters**: `accumulator (acc)`, `currentValue (curr)`, `index`, `array`.
+
+### Example
+```js
+// 1. Sum
+const nums = [1, 2, 3, 4];
+const sum = nums.reduce((acc, curr) => acc + curr, 0); // 10
+
+// 2. Group Objects by Property
+const items = [{ cat: "Fruit", name: "Apple" }, { cat: "Veg", name: "Carrot" }, { cat: "Fruit", name: "Banana" }];
+const grouped = items.reduce((acc, item) => {
+    acc[item.cat] = acc[item.cat] || [];
+    acc[item.cat].push(item.name);
+    return acc;
 }, {});
-
-// 2. Flatten Nested Array (arr.flat(Infinity))
-const nested = [1, [2, [3, [4, 5]]]];
-console.log(nested.flat(Infinity)); // [1, 2, 3, 4, 5]
-
-// 3. Remove Duplicate Objects by ID:
-const users = [
-  { id: 1, name: "Utkarsh" },
-  { id: 2, name: "Alex" },
-  { id: 1, name: "Utkarsh" }
-];
-const uniqueUsers = Array.from(new Map(users.map(u => [u.id, u])).values());
-console.log(uniqueUsers); // [{id: 1, name: "Utkarsh"}, {id: 2, name: "Alex"}]
+console.log(grouped); // { Fruit: ['Apple', 'Banana'], Veg: ['Carrot'] }
 ```
 
 ---
 
-### Q8: Sequential vs Concurrent Promise Execution
-**Question:** How do you execute an array of async tasks sequentially vs concurrently?
+## 16. Shallow Copy vs Deep Copy
 
-**Answer:**
+### Answer
+- **Shallow Copy**: Duplicates top-level properties; nested objects share the same memory pointer (`{ ...obj }`, `Object.assign()`).
+- **Deep Copy**: Clones all nested levels recursively into independent memory allocations (`structuredClone(obj)`, `JSON.parse(JSON.stringify(obj))`).
 
-```javascript
-const task = (id, ms) => () => new Promise(res => setTimeout(() => {
-  console.log(`Task ${id} completed`);
-  res(id);
-}, ms));
+### Example
+```js
+const original = { name: "Utkarsh", address: { city: "Delhi" } };
 
-const tasks = [task(1, 300), task(2, 200), task(3, 100)];
+// Shallow Copy:
+const shallow = { ...original };
+shallow.address.city = "Mumbai";
+console.log(original.address.city); // "Mumbai" (Original mutated!)
 
-// 1. Concurrent Execution (Runs in parallel, takes max(300, 200, 100) = 300ms):
-async function runConcurrent() {
-  const results = await Promise.all(tasks.map(t => t()));
-  console.log("All concurrent finished:", results);
-}
-
-// 2. Sequential Execution (Runs one after another, takes 300 + 200 + 100 = 600ms):
-async function runSequential() {
-  const results = [];
-  for (const t of tasks) {
-    results.push(await t());
-  }
-  console.log("All sequential finished:", results);
-}
+// Deep Copy:
+const deep = structuredClone(original);
+deep.address.city = "Bangalore";
+console.log(original.address.city); // "Mumbai" (Original protected)
 ```

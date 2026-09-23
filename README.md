@@ -18,7 +18,7 @@
 
 | Domain | 🟢 Easy / Core | 🟡 Medium / Applied | 🔴 Hard / Advanced | 💻 Machine Coding / Queries |
 | :--- | :--- | :--- | :--- | :--- |
-| **📜 JavaScript** | [JS Easy](./JavaScript/JAVASCRIPT_EASY.md) | [JS Medium](./JavaScript/JAVASCRIPT_MEDIUM.md) | [JS Hard](./JavaScript/JAVASCRIPT_HARD.md) | [24-Topic Master Guide](./JavaScript/JAVASCRIPT_MASTER.md) • [Polyfills](./JavaScript/JAVASCRIPT_CODING.md) |
+| **📜 JavaScript** | [JS Easy](./JavaScript/JAVASCRIPT_EASY.md) | [JS Medium](./JavaScript/JAVASCRIPT_MEDIUM.md) | [JS Hard](./JavaScript/JAVASCRIPT_HARD.md) | [JS Polyfills & Coding](./JavaScript/JAVASCRIPT_CODING.md) |
 | **⚛️ React** | [React Easy](./React/REACT_EASY.md) | [React Medium](./React/REACT_MEDIUM.md) | [React Hard](./React/REACT_HARD.md) | [Hooks & Redux Flow](./React/REACT_MEDIUM.md) |
 | **📱 React Native** | [RN Easy](./ReactNative/REACT_NATIVE_EASY.md) | [RN Medium](./ReactNative/REACT_NATIVE_MEDIUM.md) | [RN Hard](./ReactNative/REACT_NATIVE_HARD.md) | [Virtualization & JSI](./ReactNative/REACT_NATIVE_HARD.md) |
 | **🟢 Node.js** | [Node Core Architecture](./Node.js/NODE_CORE.md) | [Event Loop & Streams](./Node.js/NODE_CORE.md) | [Cluster & Workers](./Node.js/NODE_CORE.md) | [Streams Compression](./Node.js/NODE_CORE.md) |
@@ -40,9 +40,9 @@
 > [!TIP]
 > Master implementation files located in [`JavaScript/JAVASCRIPT_CODING.md`](./JavaScript/JAVASCRIPT_CODING.md):
 
-1. **`Array.prototype.myMap()`** (Handling sparse arrays & `thisArg`)
+1. **`Array.prototype.myMap()`**
 2. **`Array.prototype.myFilter()`**
-3. **`Array.prototype.myReduce()`** (Handling initial values & empty array exceptions)
+3. **`Array.prototype.myReduce()`**
 4. **Debounce Implementation** (Immediate leading-edge execution support)
 5. **Throttle Implementation** (Leading and trailing call tracking)
 6. **Deep Clone Implementation** (Handling circular references via `WeakMap`, Dates, Regex, Maps)
@@ -50,58 +50,6 @@
 8. **Custom Promise Implementation** (`MyPromise` with Microtask chaining)
 9. **Currying Function** (`curry()`)
 10. **Flatten Array Recursive & Stack Iterative**
-
----
-
-## 🏗️ Full-Stack Scenarios & System Design
-
-- 🔐 **End-to-End MERN Login Flow**: [Read in FULLSTACK_SCENARIOS.md](./SCENARIO_BASED/FULLSTACK_SCENARIOS.md#q1-explain-the-complete-mern-login-flow-from-react-to-mongodb-and-back-)
-- ⚡ **1 Million Records Keyset Cursor Pagination**: [Read in FULLSTACK_SCENARIOS.md](./SCENARIO_BASED/FULLSTACK_SCENARIOS.md#q2-how-would-you-implement-pagination-for-1-million-users-offset-vs-keyset)
-- 🚀 **10,000 Concurrent Users Node.js Architecture**: [Read in FULLSTACK_SCENARIOS.md](./SCENARIO_BASED/FULLSTACK_SCENARIOS.md#q3-how-would-you-handle-10000-concurrent-users-on-a-nodejs-backend)
-- 📦 **Direct S3 Presigned URL 500MB Uploads**: [Read in FULLSTACK_SCENARIOS.md](./SCENARIO_BASED/FULLSTACK_SCENARIOS.md#q4-how-would-you-upload-a-500mb-file-in-a-mern-application)
-
----
-
-## ⚡ Quick Interview Revision Checklist
-
-### 📜 JavaScript Core & Async
-- [ ] Lexical Scope vs Dynamic Scope & Execution Context
-- [ ] Scope Chain & Closures
-- [ ] `var` vs `let` vs `const` & TDZ
-- [ ] `call()`, `apply()`, `bind()` & Function Borrowing
-- [ ] `this` keyword rules & Arrow Function Lexical `this`
-- [ ] Shallow Copy vs Deep Copy (`structuredClone`)
-- [ ] Event Loop: Call Stack $
-ightarrow$ Microtasks (`Promises`, `nextTick`) $
-ightarrow$ Macrotasks (`setTimeout`)
-- [ ] Promise Combinators: `all`, `allSettled`, `race`, `any`
-- [ ] Debouncing vs Throttling
-
-### ⚛️ React & State
-- [ ] Virtual DOM & Reconciliation Diffing
-- [ ] React Fiber & Priority Lanes
-- [ ] `useState` functional updates & React state batching
-- [ ] `useEffect` dependency array & cleanup functions
-- [ ] `useRef` vs `useState`
-- [ ] `useMemo` vs `useCallback` (and when NOT to use `useMemo`)
-- [ ] Context API vs Prop Drilling
-- [ ] `useReducer` vs Redux Toolkit vs RTK Query
-
-### 🟢 Node.js, Express & Security
-- [ ] Libuv Event Loop 6 Phases
-- [ ] Worker Threads vs Clustering vs Child Processes
-- [ ] Streams, Buffers & Backpressure
-- [ ] Express 5 Middleware Types & Centralized Error Handling
-- [ ] JWT Access Token + Refresh Token Rotation
-- [ ] Password Hashing with Bcrypt & Salting
-- [ ] XSS vs CSRF Prevention (`HttpOnly`, `SameSite`)
-
-### 🍃 Databases & System Design
-- [ ] MongoDB 9 Index Types & `explain("executionStats")`
-- [ ] Aggregation Pipeline (`$match`, `$group`, `$project`, `$lookup`, `$unwind`)
-- [ ] ACID Properties & Isolation Levels
-- [ ] Database Normalization 1NF, 2NF, 3NF, BCNF
-- [ ] SQL Window Functions (`ROW_NUMBER`, `RANK`, `DENSE_RANK`)
 
 ---
 
